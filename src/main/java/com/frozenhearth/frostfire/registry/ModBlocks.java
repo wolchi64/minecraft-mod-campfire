@@ -1,6 +1,7 @@
 package com.frozenhearth.frostfire.registry;
 
 import com.frozenhearth.frostfire.FrostfireCampfireMod;
+import com.frozenhearth.frostfire.block.CampfireFootprintBlock;
 import com.frozenhearth.frostfire.block.SurvivalCampfireBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.SoundType;
@@ -20,6 +21,14 @@ public final class ModBlocks
                     .strength(2.0F)
                     .sound(SoundType.WOOD)
                     .noOcclusion()));
+
+    public static final RegistryObject<Block> SURVIVAL_CAMPFIRE_FOOTPRINT = REGISTER.register("survival_campfire_footprint",
+            () -> new CampfireFootprintBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.NONE)
+                    .strength(-1.0F, 3600000.0F)
+                    .noLootTable()
+                    .noOcclusion()
+                    .replaceable()));
 
     private ModBlocks() {}
 }

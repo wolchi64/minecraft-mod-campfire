@@ -1,10 +1,12 @@
 package com.frozenhearth.frostfire.blockentity;
 
+import com.frozenhearth.frostfire.block.CampfireFootprintBlock;
 import com.frozenhearth.frostfire.block.SurvivalCampfireBlock;
 import com.frozenhearth.frostfire.compat.winter.WinterWeatherManager;
 import com.frozenhearth.frostfire.config.FrostfireConfig;
 import com.frozenhearth.frostfire.fuel.CampfireFuelRegistry;
 import com.frozenhearth.frostfire.registry.ModBlockEntities;
+import com.frozenhearth.frostfire.registry.ModBlocks;
 import com.frozenhearth.frostfire.util.ActiveCampfireTracker;
 import com.frozenhearth.frostfire.util.CampfireLevel;
 import com.frozenhearth.frostfire.util.TimeFormatHelper;
@@ -98,6 +100,7 @@ public class SurvivalCampfireBlockEntity extends BlockEntity
         {
             resetMeltSweep();
         }
+        syncFootprintLayout(level);
         tickMelting(level);
 
         if (oldSheltered != sheltered || oldLevel != currentLevel || oldLit != lit)
@@ -167,6 +170,76 @@ public class SurvivalCampfireBlockEntity extends BlockEntity
         meltTicker = 0;
         meltRingRadius = 0;
         meltRingIndex = 0;
+    }
+
+    private void syncFootprintLayout(ServerLevel level)
+    {
+        if (shouldHaveFootprint())
+        {
+            placeFootprintBlocks(level);
+        }
+        else
+        {
+            clearFootprintBlocks(level);
+        }
+    }
+
+    private boolean shouldHaveFootprint()
+    {
+        return isActive() && currentLevel >= 2;
+    }
+
+    private void placeFootprintBlocks(ServerLevel level)
+    {
+        for (int dx = -1; dx <= 1; dx++)
+        {
+            for (int dz = -1; dz <= 1; dz++)
+            {
+                if (dx == 0 && dz == 0)
+                {
+                    continue;
+                }
+
+                BlockPos footprintPos = worldPosition.offset(dx, 0, dz);
+                BlockState existingState = level.getBlockState(footprintPos);
+                BlockState expectedState = ModBlocks.SURVIVAL_CAMPFIRE_FOOTPRINT.get().defaultBlockState()
+                        .setValue(CampfireFootprintBlock.MASTER_OFFSET_X, -dx)
+                        .setValue(CampfireFootprintBlock.MASTER_OFFSET_Z, -dz);
+
+                if (existingState.is(ModBlocks.SURVIVAL_CAMPFIRE_FOOTPRINT.get())
+                    && CampfireFootprintBlock.getMasterPos(footprintPos, existingState).equals(worldPosition))
+                {
+                    continue;
+                }
+
+                if (existingState.canBeReplaced())
+                {
+                    level.setBlock(footprintPos, expectedState, 3);
+                }
+            }
+        }
+    }
+
+    private void clearFootprintBlocks(ServerLevel level)
+    {
+        for (int dx = -1; dx <= 1; dx++)
+        {
+            for (int dz = -1; dz <= 1; dz++)
+            {
+                if (dx == 0 && dz == 0)
+                {
+                    continue;
+                }
+
+                BlockPos footprintPos = worldPosition.offset(dx, 0, dz);
+                BlockState footprintState = level.getBlockState(footprintPos);
+                if (footprintState.is(ModBlocks.SURVIVAL_CAMPFIRE_FOOTPRINT.get())
+                    && CampfireFootprintBlock.getMasterPos(footprintPos, footprintState).equals(worldPosition))
+                {
+                    level.removeBlock(footprintPos, false);
+                }
+            }
+        }
     }
 
     private void meltNearbySnowAndIce(ServerLevel level)
@@ -502,6 +575,7 @@ public class SurvivalCampfireBlockEntity extends BlockEntity
     public void onBroken(ServerLevel level)
     {
         ActiveCampfireTracker.remove(level, worldPosition);
+        clearFootprintBlocks(level);
     }
 
     private void syncState()
@@ -526,6 +600,7 @@ public class SurvivalCampfireBlockEntity extends BlockEntity
         if (level instanceof ServerLevel serverLevel)
         {
             ActiveCampfireTracker.setActive(serverLevel, worldPosition, isActive());
+            syncFootprintLayout(serverLevel);
         }
     }
 
