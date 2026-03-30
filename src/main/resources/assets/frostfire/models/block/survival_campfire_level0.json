@@ -35,7 +35,7 @@
     {
       "from": [13, 0, -5],
       "to": [17, 3, 11],
-      "rotation": {"x": 0, "y": -135, "z": 0, "origin": [15, 2, 3]},
+      "rotation": {"angle": 45, "axis": "y", "origin": [15, 2, 3]},
       "faces": {
         "north": {"uv": [0, 4, 4, 8], "texture": "#log", "cullface": "north"},
         "east": {"uv": [0, 1, 16, 5], "texture": "#lit_log"},
