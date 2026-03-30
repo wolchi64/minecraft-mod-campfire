@@ -44,11 +44,11 @@ public class SurvivalCampfireBlock extends BaseEntityBlock implements EntityBloc
     public static final BooleanProperty LIT = BlockStateProperties.LIT;
     public static final IntegerProperty LEVEL = IntegerProperty.create("level", 0, 4);
     private static final VoxelShape LEVEL_0_SHAPE = Shapes.or(
-            Block.box(1, 0, 1, 15, 1, 15),
-            Block.box(1, 0, 1, 5, 4, 5),
-            Block.box(11, 0, 1, 15, 4, 5),
-            Block.box(1, 0, 11, 5, 4, 15),
-            Block.box(11, 0, 11, 15, 4, 15));
+            Block.box(2, 0, 2, 14, 1, 14),
+            Block.box(2, 0, 2, 6, 3, 6),
+            Block.box(10, 0, 2, 14, 3, 6),
+            Block.box(2, 0, 10, 6, 3, 14),
+            Block.box(10, 0, 10, 14, 3, 14));
     private static final VoxelShape LEVEL_1_SHAPE = Shapes.or(
             Block.box(0, 0, 0, 16, 1, 16),
             Block.box(0, 0, 0, 16, 4, 4),
@@ -65,12 +65,6 @@ public class SurvivalCampfireBlock extends BaseEntityBlock implements EntityBloc
             Block.box(3, 4, 11, 13, 8, 14),
             Block.box(2, 4, 3, 5, 8, 13),
             Block.box(11, 4, 3, 14, 8, 13));
-    private static final VoxelShape LEVEL_3_SHAPE = Shapes.or(
-            LEVEL_2_SHAPE,
-            Block.box(4, 8, 4, 12, 11, 12));
-    private static final VoxelShape LEVEL_4_SHAPE = Shapes.or(
-            LEVEL_3_SHAPE,
-            Block.box(5, 11, 5, 11, 14, 11));
 
     public SurvivalCampfireBlock(BlockBehaviour.Properties properties)
     {
@@ -87,19 +81,19 @@ public class SurvivalCampfireBlock extends BaseEntityBlock implements EntityBloc
     @Override
     public VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context)
     {
-        return getCampfireShape(state);
+        return getLevelShape(state);
     }
 
     @Override
     public VoxelShape getCollisionShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context)
     {
-        return getCampfireShape(state);
+        return getLevelShape(state);
     }
 
     @Override
     public VoxelShape getInteractionShape(BlockState state, BlockGetter level, BlockPos pos)
     {
-        return getCampfireShape(state);
+        return getLevelShape(state);
     }
 
     @Override
@@ -108,15 +102,13 @@ public class SurvivalCampfireBlock extends BaseEntityBlock implements EntityBloc
         return false;
     }
 
-    private static VoxelShape getCampfireShape(BlockState state)
+    private static VoxelShape getLevelShape(BlockState state)
     {
         return switch (state.getValue(LEVEL))
         {
             case 0 -> LEVEL_0_SHAPE;
             case 1 -> LEVEL_1_SHAPE;
-            case 2 -> LEVEL_2_SHAPE;
-            case 3 -> LEVEL_3_SHAPE;
-            default -> LEVEL_4_SHAPE;
+            default -> LEVEL_2_SHAPE;
         };
     }
 
