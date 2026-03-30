@@ -44,8 +44,11 @@ public class SurvivalCampfireBlock extends BaseEntityBlock implements EntityBloc
     public static final BooleanProperty LIT = BlockStateProperties.LIT;
     public static final IntegerProperty LEVEL = IntegerProperty.create("level", 0, 4);
     private static final VoxelShape SHAPE = Shapes.or(
-            Block.box(1, 0, 1, 15, 4, 15),
-            Block.box(3, 4, 3, 13, 8, 13));
+            Block.box(0, 0, 0, 16, 1, 16),
+            Block.box(0, 0, 0, 16, 4, 4),
+            Block.box(0, 0, 12, 16, 4, 16),
+            Block.box(0, 0, 4, 4, 4, 12),
+            Block.box(12, 0, 4, 16, 4, 12));
 
     public SurvivalCampfireBlock(BlockBehaviour.Properties properties)
     {
@@ -61,6 +64,12 @@ public class SurvivalCampfireBlock extends BaseEntityBlock implements EntityBloc
 
     @Override
     public VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context)
+    {
+        return SHAPE;
+    }
+
+    @Override
+    public VoxelShape getCollisionShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context)
     {
         return SHAPE;
     }
