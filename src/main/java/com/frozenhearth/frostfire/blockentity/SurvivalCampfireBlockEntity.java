@@ -203,8 +203,8 @@ public class SurvivalCampfireBlockEntity extends BlockEntity
                 BlockPos footprintPos = worldPosition.offset(dx, 0, dz);
                 BlockState existingState = level.getBlockState(footprintPos);
                 BlockState expectedState = ModBlocks.SURVIVAL_CAMPFIRE_FOOTPRINT.get().defaultBlockState()
-                        .setValue(CampfireFootprintBlock.MASTER_OFFSET_X, -dx)
-                        .setValue(CampfireFootprintBlock.MASTER_OFFSET_Z, -dz);
+                        .setValue(CampfireFootprintBlock.MASTER_OFFSET_X, CampfireFootprintBlock.encodeMasterOffset(-dx))
+                        .setValue(CampfireFootprintBlock.MASTER_OFFSET_Z, CampfireFootprintBlock.encodeMasterOffset(-dz));
 
                 if (existingState.is(ModBlocks.SURVIVAL_CAMPFIRE_FOOTPRINT.get())
                     && CampfireFootprintBlock.getMasterPos(footprintPos, existingState).equals(worldPosition))

@@ -27,16 +27,16 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 
 public class CampfireFootprintBlock extends Block
 {
-    public static final IntegerProperty MASTER_OFFSET_X = IntegerProperty.create("master_offset_x", -1, 1);
-    public static final IntegerProperty MASTER_OFFSET_Z = IntegerProperty.create("master_offset_z", -1, 1);
+    public static final IntegerProperty MASTER_OFFSET_X = IntegerProperty.create("master_offset_x", 0, 2);
+    public static final IntegerProperty MASTER_OFFSET_Z = IntegerProperty.create("master_offset_z", 0, 2);
     private static final VoxelShape FOOTPRINT_SHAPE = Block.box(0, 0, 0, 16, 4, 16);
 
     public CampfireFootprintBlock(BlockBehaviour.Properties properties)
     {
         super(properties);
         this.registerDefaultState(this.stateDefinition.any()
-                .setValue(MASTER_OFFSET_X, 0)
-                .setValue(MASTER_OFFSET_Z, 0));
+                .setValue(MASTER_OFFSET_X, encodeMasterOffset(0))
+                .setValue(MASTER_OFFSET_Z, encodeMasterOffset(0)));
     }
 
     @Override
@@ -130,6 +130,16 @@ public class CampfireFootprintBlock extends Block
 
     public static BlockPos getMasterPos(BlockPos pos, BlockState state)
     {
-        return pos.offset(state.getValue(MASTER_OFFSET_X), 0, state.getValue(MASTER_OFFSET_Z));
+        return pos.offset(decodeMasterOffset(state.getValue(MASTER_OFFSET_X)), 0, decodeMasterOffset(state.getValue(MASTER_OFFSET_Z)));
+    }
+
+    public static int encodeMasterOffset(int offset)
+    {
+        return offset + 1;
+    }
+
+    public static int decodeMasterOffset(int encodedOffset)
+    {
+        return encodedOffset - 1;
     }
 }
