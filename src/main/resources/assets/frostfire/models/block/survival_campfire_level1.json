@@ -1,0 +1,57 @@
+{
+  "parent": "block/block",
+  "textures": {
+    "particle": "minecraft:block/oak_log",
+    "log": "minecraft:block/oak_log",
+    "stone": "minecraft:block/cobblestone",
+    "fire": "minecraft:block/fire_0"
+  },
+  "elements": [
+    {
+      "from": [1, 0, 1],
+      "to": [15, 2, 15],
+      "faces": {
+        "up": { "texture": "#stone" },
+        "down": { "texture": "#stone" },
+        "north": { "texture": "#stone" },
+        "south": { "texture": "#stone" },
+        "west": { "texture": "#stone" },
+        "east": { "texture": "#stone" }
+      }
+    },
+    {
+      "from": [3, 2, 5],
+      "to": [13, 4, 7],
+      "faces": {
+        "up": { "texture": "#log" },
+        "down": { "texture": "#log" },
+        "north": { "texture": "#log" },
+        "south": { "texture": "#log" },
+        "west": { "texture": "#log" },
+        "east": { "texture": "#log" }
+      }
+    },
+    {
+      "from": [3, 2, 9],
+      "to": [13, 4, 11],
+      "faces": {
+        "up": { "texture": "#log" },
+        "down": { "texture": "#log" },
+        "north": { "texture": "#log" },
+        "south": { "texture": "#log" },
+        "west": { "texture": "#log" },
+        "east": { "texture": "#log" }
+      }
+    },
+    {
+      "from": [7, 3, 7],
+      "to": [9, 9, 9],
+      "faces": {
+        "north": { "texture": "#fire" },
+        "south": { "texture": "#fire" },
+        "west": { "texture": "#fire" },
+        "east": { "texture": "#fire" }
+      }
+    }
+  ]
+}

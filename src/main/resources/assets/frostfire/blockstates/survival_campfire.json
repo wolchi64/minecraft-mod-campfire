@@ -1,0 +1,14 @@
+{
+  "variants": {
+    "level=0,lit=false": { "model": "frostfire:block/survival_campfire_unlit" },
+    "level=1,lit=false": { "model": "frostfire:block/survival_campfire_unlit" },
+    "level=2,lit=false": { "model": "frostfire:block/survival_campfire_unlit" },
+    "level=3,lit=false": { "model": "frostfire:block/survival_campfire_unlit" },
+    "level=4,lit=false": { "model": "frostfire:block/survival_campfire_unlit" },
+    "level=0,lit=true": { "model": "frostfire:block/survival_campfire_level0" },
+    "level=1,lit=true": { "model": "frostfire:block/survival_campfire_level1" },
+    "level=2,lit=true": { "model": "frostfire:block/survival_campfire_level2" },
+    "level=3,lit=true": { "model": "frostfire:block/survival_campfire_level3" },
+    "level=4,lit=true": { "model": "frostfire:block/survival_campfire_level4" }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "block.frostfire.survival_campfire": "Frostfire Campfire",
+  "frostfire.level.embers": "Embers",
+  "frostfire.level.campfire": "Campfire",
+  "frostfire.level.strong_fire": "Strong Fire",
+  "frostfire.level.bonfire": "Bonfire",
+  "frostfire.level.beacon_bonfire": "Beacon Bonfire",
+  "message.frostfire.no_fuel": "This campfire has no stored fuel to ignite.",
+  "message.frostfire.campfire_full": "The campfire cannot hold any more fuel.",
+  "message.frostfire.status.summary": "%1$s Lv.%2$s | Radius: %3$s | %4$s: %5$s | Decay: %6$s | %7$s",
+  "message.frostfire.status.detailed": "%1$s | %2$s",
+  "message.frostfire.status.downgrades": "Downgrade in",
+  "message.frostfire.status.extinguishes": "Extinguishes in",
+  "message.frostfire.status.sheltered": "Sheltered",
+  "message.frostfire.status.exposed": "Exposed",
+  "message.frostfire.status.unlit_prefix": "Unlit"
+}
