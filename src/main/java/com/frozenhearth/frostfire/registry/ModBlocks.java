@@ -27,8 +27,7 @@ public final class ModBlocks
                     .mapColor(MapColor.NONE)
                     .strength(-1.0F, 3600000.0F)
                     .noLootTable()
-                    .noOcclusion()
-                    .replaceable()));
+                    .noOcclusion()));
 
     private ModBlocks() {}
 }

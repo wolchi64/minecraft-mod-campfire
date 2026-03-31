@@ -55,8 +55,7 @@ public class SurvivalCampfireBlock extends BaseEntityBlock implements EntityBloc
             Block.box(0, 0, 12, 16, 4, 16),
             Block.box(0, 0, 4, 4, 4, 12),
             Block.box(12, 0, 4, 16, 4, 12));
-    private static final VoxelShape LEVEL_2_SHAPE = Shapes.or(
-            Block.box(0, 0, 0, 16, 32, 16));
+    private static final VoxelShape LEVEL_2_SHAPE = Block.box(0, 0, 0, 16, 16, 16);
 
     public SurvivalCampfireBlock(BlockBehaviour.Properties properties)
     {

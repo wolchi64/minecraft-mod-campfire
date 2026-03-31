@@ -1,6 +1,6 @@
 {
   "loader": "forge:obj",
-  "flip-v": true,
+  "flip-v": false,
   "model": "frostfire:models/block/survival_campfire_level2.obj",
   "textures": {
     "particle": "frostfire:block/campfire_log_top_level2",

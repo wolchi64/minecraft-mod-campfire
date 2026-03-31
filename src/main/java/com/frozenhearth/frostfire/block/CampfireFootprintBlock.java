@@ -18,27 +18,38 @@ import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
 import net.minecraft.world.level.pathfinder.PathComputationType;
 import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import org.jetbrains.annotations.Nullable;
 
 public class CampfireFootprintBlock extends Block
 {
     public static final IntegerProperty MASTER_OFFSET_X = IntegerProperty.create("master_offset_x", 0, 2);
     public static final IntegerProperty MASTER_OFFSET_Z = IntegerProperty.create("master_offset_z", 0, 2);
-    private static final VoxelShape EDGE_SHAPE = Block.box(0, 0, 0, 16, 24, 16);
-    private static final VoxelShape CORNER_NORTH_WEST_SHAPE = createCornerShape(false, false);
-    private static final VoxelShape CORNER_NORTH_EAST_SHAPE = createCornerShape(true, false);
-    private static final VoxelShape CORNER_SOUTH_WEST_SHAPE = createCornerShape(false, true);
-    private static final VoxelShape CORNER_SOUTH_EAST_SHAPE = createCornerShape(true, true);
+    public static final BooleanProperty UPPER = BooleanProperty.create("upper");
+    private static final VoxelShape LOWER_EDGE_SHAPE = Block.box(0, 0, 0, 16, 16, 16);
+    private static final VoxelShape UPPER_EDGE_SHAPE = Block.box(0, 0, 0, 16, 8, 16);
+    private static final VoxelShape UPPER_CENTER_SHAPE = Block.box(0, 0, 0, 16, 16, 16);
+    private static final VoxelShape LOWER_CORNER_NORTH_WEST_SHAPE = createLowerCornerShape(false, false);
+    private static final VoxelShape LOWER_CORNER_NORTH_EAST_SHAPE = createLowerCornerShape(true, false);
+    private static final VoxelShape LOWER_CORNER_SOUTH_WEST_SHAPE = createLowerCornerShape(false, true);
+    private static final VoxelShape LOWER_CORNER_SOUTH_EAST_SHAPE = createLowerCornerShape(true, true);
+    private static final VoxelShape UPPER_CORNER_NORTH_WEST_SHAPE = createUpperCornerShape(false, false);
+    private static final VoxelShape UPPER_CORNER_NORTH_EAST_SHAPE = createUpperCornerShape(true, false);
+    private static final VoxelShape UPPER_CORNER_SOUTH_WEST_SHAPE = createUpperCornerShape(false, true);
+    private static final VoxelShape UPPER_CORNER_SOUTH_EAST_SHAPE = createUpperCornerShape(true, true);
 
     public CampfireFootprintBlock(BlockBehaviour.Properties properties)
     {
         super(properties);
         this.registerDefaultState(this.stateDefinition.any()
+                .setValue(UPPER, false)
                 .setValue(MASTER_OFFSET_X, encodeMasterOffset(0))
                 .setValue(MASTER_OFFSET_Z, encodeMasterOffset(0)));
     }
@@ -73,10 +84,23 @@ public class CampfireFootprintBlock extends Block
         return false;
     }
 
+    @Nullable
+    @Override
+    public BlockState getStateForPlacement(BlockPlaceContext context)
+    {
+        return null;
+    }
+
+    @Override
+    public boolean canBeReplaced(BlockState state, BlockPlaceContext useContext)
+    {
+        return false;
+    }
+
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder)
     {
-        builder.add(MASTER_OFFSET_X, MASTER_OFFSET_Z);
+        builder.add(UPPER, MASTER_OFFSET_X, MASTER_OFFSET_Z);
     }
 
     @Override
@@ -134,7 +158,8 @@ public class CampfireFootprintBlock extends Block
 
     public static BlockPos getMasterPos(BlockPos pos, BlockState state)
     {
-        return pos.offset(decodeMasterOffset(state.getValue(MASTER_OFFSET_X)), 0, decodeMasterOffset(state.getValue(MASTER_OFFSET_Z)));
+        int dyToMaster = state.getValue(UPPER) ? -1 : 0;
+        return pos.offset(decodeMasterOffset(state.getValue(MASTER_OFFSET_X)), dyToMaster, decodeMasterOffset(state.getValue(MASTER_OFFSET_Z)));
     }
 
     public static int encodeMasterOffset(int offset)
@@ -149,24 +174,34 @@ public class CampfireFootprintBlock extends Block
 
     private static VoxelShape getFootprintShape(BlockState state)
     {
+        boolean upper = state.getValue(UPPER);
         int dxToMaster = decodeMasterOffset(state.getValue(MASTER_OFFSET_X));
         int dzToMaster = decodeMasterOffset(state.getValue(MASTER_OFFSET_Z));
+        if (upper && dxToMaster == 0 && dzToMaster == 0)
+        {
+            return UPPER_CENTER_SHAPE;
+        }
+
         boolean isCorner = dxToMaster != 0 && dzToMaster != 0;
         if (!isCorner)
         {
-            return EDGE_SHAPE;
+            return upper ? UPPER_EDGE_SHAPE : LOWER_EDGE_SHAPE;
         }
 
         boolean masterIsEast = dxToMaster > 0;
         boolean masterIsSouth = dzToMaster > 0;
         if (masterIsEast)
         {
-            return masterIsSouth ? CORNER_SOUTH_EAST_SHAPE : CORNER_NORTH_EAST_SHAPE;
+            return upper
+                   ? (masterIsSouth ? UPPER_CORNER_SOUTH_EAST_SHAPE : UPPER_CORNER_NORTH_EAST_SHAPE)
+                   : (masterIsSouth ? LOWER_CORNER_SOUTH_EAST_SHAPE : LOWER_CORNER_NORTH_EAST_SHAPE);
         }
-        return masterIsSouth ? CORNER_SOUTH_WEST_SHAPE : CORNER_NORTH_WEST_SHAPE;
+        return upper
+               ? (masterIsSouth ? UPPER_CORNER_SOUTH_WEST_SHAPE : UPPER_CORNER_NORTH_WEST_SHAPE)
+               : (masterIsSouth ? LOWER_CORNER_SOUTH_WEST_SHAPE : LOWER_CORNER_NORTH_WEST_SHAPE);
     }
 
-    private static VoxelShape createCornerShape(boolean towardEast, boolean towardSouth)
+    private static VoxelShape createLowerCornerShape(boolean towardEast, boolean towardSouth)
     {
         double minX = towardEast ? 8.0D : 0.0D;
         double maxX = towardEast ? 16.0D : 8.0D;
@@ -177,7 +212,16 @@ public class CampfireFootprintBlock extends Block
                 Block.box(0, 0, 0, 16, 8, 16),
                 Block.box(minX, 0, 0, maxX, 16, 16),
                 Block.box(0, 0, minZ, 16, 16, maxZ),
-                Block.box(minX, 0, minZ, maxX, 24, maxZ)
+                Block.box(minX, 0, minZ, maxX, 16, maxZ)
         );
+    }
+
+    private static VoxelShape createUpperCornerShape(boolean towardEast, boolean towardSouth)
+    {
+        double minX = towardEast ? 8.0D : 0.0D;
+        double maxX = towardEast ? 16.0D : 8.0D;
+        double minZ = towardSouth ? 8.0D : 0.0D;
+        double maxZ = towardSouth ? 16.0D : 8.0D;
+        return Block.box(minX, 0, minZ, maxX, 8, maxZ);
     }
 }
