@@ -1,0 +1,25 @@
+# Generated from fc3.json
+newmtl side
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+map_Kd #side
+
+newmtl end
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+map_Kd #end
+
+newmtl fire
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+map_Kd #fire
+
+newmtl lit_log
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+map_Kd #lit_log
+
+newmtl all
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+map_Kd #all

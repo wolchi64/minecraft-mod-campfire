@@ -1,81 +1,13 @@
 {
-  "parent": "block/block",
+  "loader": "forge:obj",
+  "flip-v": false,
+  "model": "frostfire:models/block/survival_campfire_level3.obj",
   "textures": {
-    "particle": "minecraft:block/oak_log",
-    "log": "minecraft:block/oak_log",
-    "stone": "minecraft:block/cobblestone",
-    "fire": "minecraft:block/fire_0"
-  },
-  "elements": [
-    {
-      "from": [0, 0, 0],
-      "to": [16, 2, 16],
-      "faces": {
-        "up": { "texture": "#stone" },
-        "down": { "texture": "#stone" },
-        "north": { "texture": "#stone" },
-        "south": { "texture": "#stone" },
-        "west": { "texture": "#stone" },
-        "east": { "texture": "#stone" }
-      }
-    },
-    {
-      "from": [1, 2, 4],
-      "to": [15, 4, 6],
-      "faces": {
-        "up": { "texture": "#log" },
-        "down": { "texture": "#log" },
-        "north": { "texture": "#log" },
-        "south": { "texture": "#log" },
-        "west": { "texture": "#log" },
-        "east": { "texture": "#log" }
-      }
-    },
-    {
-      "from": [1, 2, 10],
-      "to": [15, 4, 12],
-      "faces": {
-        "up": { "texture": "#log" },
-        "down": { "texture": "#log" },
-        "north": { "texture": "#log" },
-        "south": { "texture": "#log" },
-        "west": { "texture": "#log" },
-        "east": { "texture": "#log" }
-      }
-    },
-    {
-      "from": [4, 4, 2],
-      "to": [6, 10, 14],
-      "faces": {
-        "up": { "texture": "#log" },
-        "down": { "texture": "#log" },
-        "north": { "texture": "#log" },
-        "south": { "texture": "#log" },
-        "west": { "texture": "#log" },
-        "east": { "texture": "#log" }
-      }
-    },
-    {
-      "from": [10, 4, 2],
-      "to": [12, 10, 14],
-      "faces": {
-        "up": { "texture": "#log" },
-        "down": { "texture": "#log" },
-        "north": { "texture": "#log" },
-        "south": { "texture": "#log" },
-        "west": { "texture": "#log" },
-        "east": { "texture": "#log" }
-      }
-    },
-    {
-      "from": [6, 3, 6],
-      "to": [10, 13, 10],
-      "faces": {
-        "north": { "texture": "#fire" },
-        "south": { "texture": "#fire" },
-        "west": { "texture": "#fire" },
-        "east": { "texture": "#fire" }
-      }
-    }
-  ]
+    "particle": "frostfire:block/campfire_log_top_level3",
+    "side": "frostfire:block/campfire_log_level3",
+    "end": "frostfire:block/campfire_log_top_level3",
+    "fire": "frostfire:block/campfire_fire_level3",
+    "lit_log": "frostfire:block/campfire_log_lit_level3",
+    "all": "frostfire:block/smooth_stone_level3"
+  }
 }
