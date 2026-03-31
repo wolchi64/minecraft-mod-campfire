@@ -1,69 +1,13 @@
 {
-  "parent": "block/block",
+  "loader": "forge:obj",
+  "flip-v": false,
+  "model": "frostfire:models/block/survival_campfire_level4.obj",
   "textures": {
-    "particle": "minecraft:block/oak_log",
-    "log": "minecraft:block/oak_log",
-    "stone": "minecraft:block/cobblestone",
-    "fire": "minecraft:block/fire_0"
-  },
-  "elements": [
-    {
-      "from": [0, 0, 0],
-      "to": [16, 2, 16],
-      "faces": {
-        "up": { "texture": "#stone" },
-        "down": { "texture": "#stone" },
-        "north": { "texture": "#stone" },
-        "south": { "texture": "#stone" },
-        "west": { "texture": "#stone" },
-        "east": { "texture": "#stone" }
-      }
-    },
-    {
-      "from": [2, 2, 3],
-      "to": [14, 5, 5],
-      "faces": {
-        "up": { "texture": "#log" },
-        "down": { "texture": "#log" },
-        "north": { "texture": "#log" },
-        "south": { "texture": "#log" },
-        "west": { "texture": "#log" },
-        "east": { "texture": "#log" }
-      }
-    },
-    {
-      "from": [2, 2, 11],
-      "to": [14, 5, 13],
-      "faces": {
-        "up": { "texture": "#log" },
-        "down": { "texture": "#log" },
-        "north": { "texture": "#log" },
-        "south": { "texture": "#log" },
-        "west": { "texture": "#log" },
-        "east": { "texture": "#log" }
-      }
-    },
-    {
-      "from": [3, 5, 3],
-      "to": [13, 8, 13],
-      "faces": {
-        "up": { "texture": "#log" },
-        "down": { "texture": "#log" },
-        "north": { "texture": "#log" },
-        "south": { "texture": "#log" },
-        "west": { "texture": "#log" },
-        "east": { "texture": "#log" }
-      }
-    },
-    {
-      "from": [5, 8, 5],
-      "to": [11, 16, 11],
-      "faces": {
-        "north": { "texture": "#fire" },
-        "south": { "texture": "#fire" },
-        "west": { "texture": "#fire" },
-        "east": { "texture": "#fire" }
-      }
-    }
-  ]
+    "particle": "frostfire:block/campfire_log_top_level3",
+    "side": "frostfire:block/campfire_log_level3",
+    "end": "frostfire:block/campfire_log_top_level3",
+    "fire": "frostfire:block/campfire_fire_level3",
+    "lit_log": "frostfire:block/campfire_log_lit_level3",
+    "all": "frostfire:block/smooth_stone_level3"
+  }
 }
