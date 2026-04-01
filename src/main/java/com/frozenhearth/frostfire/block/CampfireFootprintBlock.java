@@ -238,6 +238,7 @@ public class CampfireFootprintBlock extends Block
         boolean towardEast = dxToMaster > 0;
         boolean towardSouth = dzToMaster > 0;
         boolean corner = dxToMaster != 0 && dzToMaster != 0;
+        boolean outerCorner = Math.abs(dxToMaster) == 2 && Math.abs(dzToMaster) == 2;
 
         return switch (layer)
         {
@@ -249,7 +250,7 @@ public class CampfireFootprintBlock extends Block
                 }
                 if (ring == 2)
                 {
-                    yield corner
+                    yield outerCorner
                           ? createInwardQuadrant(towardEast, towardSouth, 8.0D)
                           : createInwardStair(dxToMaster, dzToMaster);
                 }
@@ -304,7 +305,7 @@ public class CampfireFootprintBlock extends Block
     private static VoxelShape createInwardStair(int dxToMaster, int dzToMaster)
     {
         VoxelShape base = Block.box(0, 0, 0, 16, 8, 16);
-        if (dxToMaster == 0)
+        if (Math.abs(dzToMaster) >= Math.abs(dxToMaster))
         {
             return dzToMaster > 0
                    ? Shapes.or(base, Block.box(0, 8, 0, 16, 16, 8))
