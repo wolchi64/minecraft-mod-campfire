@@ -1,4 +1,4 @@
-# Generated for Frostfire level 4
+# Generated from template_campfire.json
 newmtl side
 Ka 1.000 1.000 1.000
 Kd 1.000 1.000 1.000
@@ -13,13 +13,3 @@ newmtl fire
 Ka 1.000 1.000 1.000
 Kd 1.000 1.000 1.000
 map_Kd #fire
-
-newmtl lit_log
-Ka 1.000 1.000 1.000
-Kd 1.000 1.000 1.000
-map_Kd #lit_log
-
-newmtl all
-Ka 1.000 1.000 1.000
-Kd 1.000 1.000 1.000
-map_Kd #all

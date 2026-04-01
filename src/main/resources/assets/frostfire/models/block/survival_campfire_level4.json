@@ -3,11 +3,9 @@
   "flip-v": false,
   "model": "frostfire:models/block/survival_campfire_level4.obj",
   "textures": {
-    "particle": "frostfire:block/campfire_log_top_level3",
-    "side": "frostfire:block/campfire_log_level3",
-    "end": "frostfire:block/campfire_log_top_level3",
-    "fire": "frostfire:block/campfire_fire_level3",
-    "lit_log": "frostfire:block/campfire_log_lit_level3",
-    "all": "frostfire:block/smooth_stone_level3"
+    "particle": "frostfire:block/campfire_log_top_level4",
+    "side": "frostfire:block/campfire_log_level4",
+    "end": "frostfire:block/campfire_log_top_level4",
+    "fire": "frostfire:block/campfire_fire_level4"
   }
 }

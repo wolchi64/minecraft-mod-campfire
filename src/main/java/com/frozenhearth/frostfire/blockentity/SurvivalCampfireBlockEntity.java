@@ -34,6 +34,8 @@ import org.jetbrains.annotations.Nullable;
 
 public class SurvivalCampfireBlockEntity extends BlockEntity
 {
+    private static final int MAX_FOOTPRINT_RADIUS = 2;
+    private static final int MAX_FOOTPRINT_LAYERS = 4;
     private int fuelBuffer;
     private int currentLevel;
     private boolean lit;
@@ -115,14 +117,16 @@ public class SurvivalCampfireBlockEntity extends BlockEntity
 
     private void consumeNearbyFuelEntities(ServerLevel level)
     {
+        int radius = getFootprintRadius();
+        int layers = getFootprintLayerCount();
         AABB box = shouldHaveFootprint()
                    ? new AABB(
-                           worldPosition.getX() - 1.0D,
+                           worldPosition.getX() - radius,
                            worldPosition.getY() + 0.25D,
-                           worldPosition.getZ() - 1.0D,
-                           worldPosition.getX() + 2.0D,
-                           worldPosition.getY() + 3.0D,
-                           worldPosition.getZ() + 2.0D
+                           worldPosition.getZ() - radius,
+                           worldPosition.getX() + radius + 1.0D,
+                           worldPosition.getY() + layers + 1.25D,
+                           worldPosition.getZ() + radius + 1.0D
                    )
                    : new AABB(
                            worldPosition.getX(),
@@ -183,13 +187,10 @@ public class SurvivalCampfireBlockEntity extends BlockEntity
 
     private void syncFootprintLayout(ServerLevel level)
     {
+        clearUnusedFootprintBlocks(level);
         if (shouldHaveFootprint())
         {
             placeFootprintBlocks(level);
-        }
-        else
-        {
-            clearFootprintBlocks(level);
         }
     }
 
@@ -198,16 +199,68 @@ public class SurvivalCampfireBlockEntity extends BlockEntity
         return isActive() && currentLevel >= 2;
     }
 
-    private void placeFootprintBlocks(ServerLevel level)
+    private int getFootprintRadius()
     {
-        placeFootprintLayer(level, false);
-        placeFootprintLayer(level, true);
+        if (!shouldHaveFootprint())
+        {
+            return 0;
+        }
+        return currentLevel >= 4 ? 2 : 1;
     }
 
-    private void clearFootprintBlocks(ServerLevel level)
+    private int getFootprintLayerCount()
     {
-        clearFootprintLayer(level, false);
-        clearFootprintLayer(level, true);
+        if (!shouldHaveFootprint())
+        {
+            return 0;
+        }
+        return currentLevel >= 4 ? 4 : 2;
+    }
+
+    private void placeFootprintBlocks(ServerLevel level)
+    {
+        int radius = getFootprintRadius();
+        int layers = getFootprintLayerCount();
+        for (int layer = 0; layer < layers; layer++)
+        {
+            placeFootprintLayer(level, radius, layer);
+        }
+    }
+
+    private void clearUnusedFootprintBlocks(ServerLevel level)
+    {
+        int activeRadius = getFootprintRadius();
+        int activeLayers = getFootprintLayerCount();
+        for (int layer = 0; layer < MAX_FOOTPRINT_LAYERS; layer++)
+        {
+            for (int dx = -MAX_FOOTPRINT_RADIUS; dx <= MAX_FOOTPRINT_RADIUS; dx++)
+            {
+                for (int dz = -MAX_FOOTPRINT_RADIUS; dz <= MAX_FOOTPRINT_RADIUS; dz++)
+                {
+                    if (layer == 0 && dx == 0 && dz == 0)
+                    {
+                        continue;
+                    }
+
+                    BlockPos footprintPos = worldPosition.offset(dx, layer, dz);
+                    BlockState footprintState = level.getBlockState(footprintPos);
+                    if (!footprintState.is(ModBlocks.SURVIVAL_CAMPFIRE_FOOTPRINT.get()))
+                    {
+                        continue;
+                    }
+
+                    boolean belongsToThis = CampfireFootprintBlock.getMasterPos(footprintPos, footprintState).equals(worldPosition);
+                    boolean shouldExist = layer < activeLayers
+                                          && Math.abs(dx) <= activeRadius
+                                          && Math.abs(dz) <= activeRadius
+                                          && shouldPlaceFootprintAt(layer, dx, dz);
+                    if (belongsToThis && !shouldExist)
+                    {
+                        level.removeBlock(footprintPos, false);
+                    }
+                }
+            }
+        }
     }
 
     private void meltNearbySnowAndIce(ServerLevel level)
@@ -645,26 +698,47 @@ public class SurvivalCampfireBlockEntity extends BlockEntity
 
     private record RingOffset(int dx, int dz) {}
 
-    private void placeFootprintLayer(ServerLevel level, boolean upper)
+    private boolean shouldPlaceFootprintAt(int layer, int dx, int dz)
     {
-        for (int dx = -1; dx <= 1; dx++)
+        if (layer == 0)
         {
-            for (int dz = -1; dz <= 1; dz++)
+            return dx != 0 || dz != 0;
+        }
+
+        if (currentLevel >= 4)
+        {
+            return switch (layer)
             {
-                if (!upper && dx == 0 && dz == 0)
+                case 1 -> Math.abs(dx) <= 1 && Math.abs(dz) <= 1;
+                case 2, 3 -> false;
+                default -> false;
+            };
+        }
+
+        return Math.abs(dx) <= 1 && Math.abs(dz) <= 1;
+    }
+
+    private void placeFootprintLayer(ServerLevel level, int radius, int layer)
+    {
+        for (int dx = -radius; dx <= radius; dx++)
+        {
+            for (int dz = -radius; dz <= radius; dz++)
+            {
+                if (!shouldPlaceFootprintAt(layer, dx, dz))
                 {
                     continue;
                 }
 
-                BlockPos footprintPos = worldPosition.offset(dx, upper ? 1 : 0, dz);
+                BlockPos footprintPos = worldPosition.offset(dx, layer, dz);
                 BlockState existingState = level.getBlockState(footprintPos);
                 BlockState expectedState = ModBlocks.SURVIVAL_CAMPFIRE_FOOTPRINT.get().defaultBlockState()
-                        .setValue(CampfireFootprintBlock.UPPER, upper)
+                        .setValue(CampfireFootprintBlock.UPPER, layer > 0)
+                        .setValue(CampfireFootprintBlock.LAYER, layer)
                         .setValue(CampfireFootprintBlock.MASTER_OFFSET_X, CampfireFootprintBlock.encodeMasterOffset(-dx))
                         .setValue(CampfireFootprintBlock.MASTER_OFFSET_Z, CampfireFootprintBlock.encodeMasterOffset(-dz));
 
                 if (existingState.is(ModBlocks.SURVIVAL_CAMPFIRE_FOOTPRINT.get())
-                    && existingState.getValue(CampfireFootprintBlock.UPPER) == upper
+                    && existingState.getValue(CampfireFootprintBlock.LAYER) == layer
                     && CampfireFootprintBlock.getMasterPos(footprintPos, existingState).equals(worldPosition))
                 {
                     continue;
@@ -678,26 +752,11 @@ public class SurvivalCampfireBlockEntity extends BlockEntity
         }
     }
 
-    private void clearFootprintLayer(ServerLevel level, boolean upper)
+    private void clearFootprintBlocks(ServerLevel level)
     {
-        for (int dx = -1; dx <= 1; dx++)
-        {
-            for (int dz = -1; dz <= 1; dz++)
-            {
-                if (!upper && dx == 0 && dz == 0)
-                {
-                    continue;
-                }
-
-                BlockPos footprintPos = worldPosition.offset(dx, upper ? 1 : 0, dz);
-                BlockState footprintState = level.getBlockState(footprintPos);
-                if (footprintState.is(ModBlocks.SURVIVAL_CAMPFIRE_FOOTPRINT.get())
-                    && footprintState.getValue(CampfireFootprintBlock.UPPER) == upper
-                    && CampfireFootprintBlock.getMasterPos(footprintPos, footprintState).equals(worldPosition))
-                {
-                    level.removeBlock(footprintPos, false);
-                }
-            }
-        }
+        int previousLevel = currentLevel;
+        currentLevel = 4;
+        clearUnusedFootprintBlocks(level);
+        currentLevel = previousLevel;
     }
 }
