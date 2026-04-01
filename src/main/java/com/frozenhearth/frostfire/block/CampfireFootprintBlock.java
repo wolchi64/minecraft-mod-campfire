@@ -308,12 +308,12 @@ public class CampfireFootprintBlock extends Block
         if (Math.abs(dzToMaster) >= Math.abs(dxToMaster))
         {
             return dzToMaster > 0
-                   ? Shapes.or(base, Block.box(0, 8, 0, 16, 16, 8))
-                   : Shapes.or(base, Block.box(0, 8, 8, 16, 16, 16));
+                   ? Shapes.or(base, Block.box(0, 8, 8, 16, 16, 16))
+                   : Shapes.or(base, Block.box(0, 8, 0, 16, 16, 8));
         }
 
         return dxToMaster > 0
-               ? Shapes.or(base, Block.box(0, 8, 0, 8, 16, 16))
-               : Shapes.or(base, Block.box(8, 8, 0, 16, 16, 16));
+               ? Shapes.or(base, Block.box(8, 8, 0, 16, 16, 16))
+               : Shapes.or(base, Block.box(0, 8, 0, 8, 16, 16));
     }
 }
