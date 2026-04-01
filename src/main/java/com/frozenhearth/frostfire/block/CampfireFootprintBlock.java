@@ -37,6 +37,7 @@ public class CampfireFootprintBlock extends Block
 
     private static final VoxelShape EMPTY = Shapes.empty();
     private static final VoxelShape FULL_BLOCK = Block.box(0, 0, 0, 16, 16, 16);
+    private static final VoxelShape HALF_HEIGHT_BLOCK = Block.box(0, 0, 0, 16, 8, 16);
     public CampfireFootprintBlock(BlockBehaviour.Properties properties)
     {
         super(properties);
@@ -264,7 +265,7 @@ public class CampfireFootprintBlock extends Block
                 {
                     yield EMPTY;
                 }
-                yield FULL_BLOCK;
+                yield Math.abs(dzToMaster) == 1 ? FULL_BLOCK : HALF_HEIGHT_BLOCK;
             }
             case 2, 3 -> EMPTY;
             default -> EMPTY;
