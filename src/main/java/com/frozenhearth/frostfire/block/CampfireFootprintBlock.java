@@ -265,7 +265,7 @@ public class CampfireFootprintBlock extends Block
                 {
                     yield EMPTY;
                 }
-                yield Math.abs(dzToMaster) == 1 ? FULL_BLOCK : HALF_DEPTH_BLOCK;
+                yield dxToMaster == 0 && dzToMaster != 0 ? HALF_DEPTH_BLOCK : FULL_BLOCK;
             }
             case 2, 3 -> EMPTY;
             default -> EMPTY;
