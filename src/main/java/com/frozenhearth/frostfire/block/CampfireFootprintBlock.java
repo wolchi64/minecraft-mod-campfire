@@ -303,15 +303,16 @@ public class CampfireFootprintBlock extends Block
 
     private static VoxelShape createInwardStair(int dxToMaster, int dzToMaster)
     {
+        VoxelShape base = Block.box(0, 0, 0, 16, 8, 16);
         if (dxToMaster == 0)
         {
             return dzToMaster > 0
-                   ? Shapes.or(Block.box(0, 0, 8, 16, 8, 16), Block.box(0, 0, 0, 16, 16, 8))
-                   : Shapes.or(Block.box(0, 0, 0, 16, 8, 8), Block.box(0, 0, 8, 16, 16, 16));
+                   ? Shapes.or(base, Block.box(0, 8, 0, 16, 16, 8))
+                   : Shapes.or(base, Block.box(0, 8, 8, 16, 16, 16));
         }
 
         return dxToMaster > 0
-               ? Shapes.or(Block.box(8, 0, 0, 16, 8, 16), Block.box(0, 0, 0, 8, 16, 16))
-               : Shapes.or(Block.box(0, 0, 0, 8, 8, 16), Block.box(8, 0, 0, 16, 16, 16));
+               ? Shapes.or(base, Block.box(0, 8, 0, 8, 16, 16))
+               : Shapes.or(base, Block.box(8, 8, 0, 16, 16, 16));
     }
 }
