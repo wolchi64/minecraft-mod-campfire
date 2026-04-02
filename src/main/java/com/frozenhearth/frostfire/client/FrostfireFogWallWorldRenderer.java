@@ -21,20 +21,20 @@ import java.util.List;
 public final class FrostfireFogWallWorldRenderer
 {
     private static final RenderLevelStageEvent.Stage RENDER_STAGE = RenderLevelStageEvent.Stage.AFTER_PARTICLES;
-    private static final int CYLINDER_SEGMENTS = 84;
-    private static final int FOG_SHELL_COUNT = 11;
-    private static final int FOG_WISP_COLUMNS = 64;
-    private static final int FOG_WISP_DEPTH_LAYERS = 4;
-    private static final float SHELL_HALF_THICKNESS = 9.5F;
-    private static final float SHELL_RADIUS_JITTER = 1.15F;
-    private static final float BAND_HEIGHT_JITTER = 1.35F;
+    private static final int CYLINDER_SEGMENTS = 96;
+    private static final int FOG_SHELL_COUNT = 5;
+    private static final int FOG_SLICE_COLUMNS = 18;
+    private static final int FOG_SLICE_DEPTH_LAYERS = 2;
+    private static final float SHELL_HALF_THICKNESS = 8.25F;
+    private static final float SHELL_RADIUS_JITTER = 0.55F;
+    private static final float BAND_HEIGHT_JITTER = 0.85F;
     private static final float MIN_BAND_HEIGHT = 0.75F;
-    private static final float FOG_WISP_HALF_WIDTH = 2.35F;
-    private static final float FOG_WISP_HEIGHT_PADDING = 5.0F;
+    private static final float FOG_SLICE_HALF_WIDTH = 1.65F;
+    private static final float FOG_SLICE_HEIGHT_PADDING = 8.0F;
     private static final float[] HEIGHT_OFFSETS =
             new float[] {-34.0F, -25.0F, -17.0F, -10.0F, -4.0F, 2.5F, 9.5F, 18.0F, 28.0F, 41.0F, 57.0F, 76.0F, 96.0F};
     private static final float[] HEIGHT_ALPHA =
-            new float[] {0.10F, 0.16F, 0.26F, 0.40F, 0.58F, 0.78F, 0.94F, 1.00F, 0.92F, 0.76F, 0.54F, 0.30F, 0.14F};
+            new float[] {0.12F, 0.18F, 0.30F, 0.46F, 0.64F, 0.82F, 0.96F, 1.00F, 0.92F, 0.72F, 0.50F, 0.28F, 0.12F};
     private static final int WALL_RED = 232;
     private static final int WALL_GREEN = 238;
     private static final int WALL_BLUE = 245;
@@ -76,7 +76,7 @@ public final class FrostfireFogWallWorldRenderer
 
         MultiBufferSource.BufferSource bufferSource = minecraft.renderBuffers().bufferSource();
         VertexConsumer consumer = bufferSource.getBuffer(FrostfireFogWallRenderTypes.campfireDomainWall());
-        Matrix4f poseMatrix = new Matrix4f();
+        Matrix4f poseMatrix = event.getPoseStack().last().pose();
         boolean renderedAny = false;
 
         for (FrostfireClientWeatherCache.WeatherZoneSnapshot zone : visibleZones)
@@ -135,8 +135,7 @@ public final class FrostfireFogWallWorldRenderer
             float shellFraction = FOG_SHELL_COUNT <= 1 ? 0.5F : (float) shell / (float) (FOG_SHELL_COUNT - 1);
             float centerWeight = 1.0F - Math.abs((shellFraction * 2.0F) - 1.0F);
             float softenedCenterWeight = smoothstep(centerWeight);
-            float shellAlphaScale = Mth.lerp(softenedCenterWeight, 0.14F, Mth.lerp(weatherIntensity, 0.72F, 0.90F));
-            shellAlphaScale = Math.min(1.0F, shellAlphaScale + (0.12F * softenedCenterWeight));
+            float shellAlphaScale = Mth.lerp(softenedCenterWeight, 0.18F, Mth.lerp(weatherIntensity, 0.78F, 0.94F));
             float shellRadius = Mth.lerp(shellFraction, innerRadius, outerRadius);
             shellRadius += sampleCenteredNoise(zone.center(), shell * 2.7F, 11.0F) * SHELL_RADIUS_JITTER;
             shellRadius = Mth.clamp(shellRadius, innerRadius - 0.55F, outerRadius + 0.55F);
@@ -145,7 +144,7 @@ public final class FrostfireFogWallWorldRenderer
                     weatherHeightExtension, shell);
         }
 
-        appendCameraFacingWisps(consumer, poseMatrix, cameraPos, zone.center(), innerRadius, outerRadius, weatherIntensity);
+        appendInteriorFogSlices(consumer, poseMatrix, cameraPos, zone.center(), innerRadius, outerRadius, weatherIntensity);
     }
 
     private static void appendCylinderSurface(VertexConsumer consumer, Matrix4f poseMatrix, Vec3 cameraPos, Vec3 center,
@@ -158,10 +157,10 @@ public final class FrostfireFogWallWorldRenderer
             float startRadius = radius + radialWarp(center, shellIndex, startAngle);
             float endRadius = radius + radialWarp(center, shellIndex, endAngle);
 
-            float startX = (float) (center.x + (Math.cos(startAngle) * startRadius));
-            float startZ = (float) (center.z + (Math.sin(startAngle) * startRadius));
-            float endX = (float) (center.x + (Math.cos(endAngle) * endRadius));
-            float endZ = (float) (center.z + (Math.sin(endAngle) * endRadius));
+            float startX = (float) (center.x + (Math.cos(startAngle) * startRadius) - cameraPos.x);
+            float startZ = (float) (center.z + (Math.sin(startAngle) * startRadius) - cameraPos.z);
+            float endX = (float) (center.x + (Math.cos(endAngle) * endRadius) - cameraPos.x);
+            float endZ = (float) (center.z + (Math.sin(endAngle) * endRadius) - cameraPos.z);
 
             for (int band = 0; band < HEIGHT_OFFSETS.length - 1; band++)
             {
@@ -175,14 +174,14 @@ public final class FrostfireFogWallWorldRenderer
                         startLowerOffset + MIN_BAND_HEIGHT);
                 float endUpperOffset = Math.max(heightOffset1 + heightWarp(center, shellIndex, band + 1, endAngle),
                         endLowerOffset + MIN_BAND_HEIGHT);
-                float startY0 = (float) (center.y + startLowerOffset);
-                float endY0 = (float) (center.y + endLowerOffset);
+                float startY0 = (float) (center.y + startLowerOffset - cameraPos.y);
+                float endY0 = (float) (center.y + endLowerOffset - cameraPos.y);
                 float startY1 = (float) (center.y
                         + startUpperOffset
-                        );
+                        - cameraPos.y);
                 float endY1 = (float) (center.y
                         + endUpperOffset
-                        );
+                        - cameraPos.y);
 
                 float bandDensity0 = HEIGHT_ALPHA[band]
                         * (0.94F + (0.12F * sampleCenteredNoise(center, (band * 5.7F) + shellIndex, 53.0F)));
@@ -199,39 +198,39 @@ public final class FrostfireFogWallWorldRenderer
         }
     }
 
-    private static void appendCameraFacingWisps(VertexConsumer consumer, Matrix4f poseMatrix, Vec3 cameraPos, Vec3 center,
+    private static void appendInteriorFogSlices(VertexConsumer consumer, Matrix4f poseMatrix, Vec3 cameraPos, Vec3 center,
                                                 float innerRadius, float outerRadius, float weatherIntensity)
     {
-        Vec3 viewRight = horizontalViewRight(cameraPos, center);
-        float bottomY = (float) (center.y + HEIGHT_OFFSETS[0]);
-        float topY = (float) (center.y + HEIGHT_OFFSETS[HEIGHT_OFFSETS.length - 1]
-                + Mth.lerp(weatherIntensity, 3.0F, 9.0F));
+        float bottomY = (float) (center.y + HEIGHT_OFFSETS[1] - cameraPos.y);
+        float topY = (float) (center.y + HEIGHT_OFFSETS[HEIGHT_OFFSETS.length - 2]
+                + Mth.lerp(weatherIntensity, 2.5F, 7.5F) - cameraPos.y);
 
-        for (int column = 0; column < FOG_WISP_COLUMNS; column++)
+        for (int column = 0; column < FOG_SLICE_COLUMNS; column++)
         {
-            float angleFraction = (float) column / (float) FOG_WISP_COLUMNS;
+            float angleFraction = (float) column / (float) FOG_SLICE_COLUMNS;
             double angle = angleFraction * Mth.TWO_PI;
             Vec3 radial = new Vec3(Math.cos(angle), 0.0D, Math.sin(angle));
+            Vec3 tangent = new Vec3(-radial.z, 0.0D, radial.x);
 
-            for (int depthLayer = 0; depthLayer < FOG_WISP_DEPTH_LAYERS; depthLayer++)
+            for (int depthLayer = 0; depthLayer < FOG_SLICE_DEPTH_LAYERS; depthLayer++)
             {
-                float depthFraction = FOG_WISP_DEPTH_LAYERS <= 1 ? 0.5F : (float) depthLayer / (float) (FOG_WISP_DEPTH_LAYERS - 1);
+                float depthFraction = FOG_SLICE_DEPTH_LAYERS <= 1 ? 0.5F : (float) depthLayer / (float) (FOG_SLICE_DEPTH_LAYERS - 1);
                 float depthWeight = 1.0F - Math.abs((depthFraction * 2.0F) - 1.0F);
                 float softenedDepth = smoothstep(depthWeight);
                 float radius = Mth.lerp(depthFraction, innerRadius, outerRadius);
-                radius += sampleCenteredNoise(center, (column * 3.17F) + depthLayer, 91.0F) * 0.95F;
+                radius += sampleCenteredNoise(center, (column * 3.17F) + depthLayer, 91.0F) * 0.45F;
 
                 Vec3 anchor = center.add(radial.scale(radius));
-                float bottomJitter = sampleCenteredNoise(center, (column * 1.91F) + (depthLayer * 7.0F), 101.0F) * 3.0F;
-                float topJitter = sampleCenteredNoise(center, (column * 2.33F) + (depthLayer * 9.0F), 109.0F) * 6.0F;
-                float wispBottomY = bottomY + bottomJitter + FOG_WISP_HEIGHT_PADDING;
-                float wispTopY = topY + topJitter - FOG_WISP_HEIGHT_PADDING;
-                float halfWidth = FOG_WISP_HALF_WIDTH + (1.1F * softenedDepth);
+                float bottomJitter = sampleCenteredNoise(center, (column * 1.91F) + (depthLayer * 7.0F), 101.0F) * 2.0F;
+                float topJitter = sampleCenteredNoise(center, (column * 2.33F) + (depthLayer * 9.0F), 109.0F) * 4.0F;
+                float sliceBottomY = bottomY + bottomJitter + FOG_SLICE_HEIGHT_PADDING;
+                float sliceTopY = topY + topJitter - FOG_SLICE_HEIGHT_PADDING;
+                float halfWidth = FOG_SLICE_HALF_WIDTH + (0.65F * softenedDepth);
 
-                int bottomAlpha = scaledAlpha(0.28F + (0.18F * softenedDepth), 0.70F + (0.24F * weatherIntensity));
-                int topAlpha = scaledAlpha(0.22F + (0.16F * softenedDepth), 0.64F + (0.22F * weatherIntensity));
+                int bottomAlpha = scaledAlpha(0.18F + (0.12F * softenedDepth), 0.56F + (0.16F * weatherIntensity));
+                int topAlpha = scaledAlpha(0.14F + (0.10F * softenedDepth), 0.50F + (0.14F * weatherIntensity));
 
-                addBillboardQuad(consumer, poseMatrix, anchor, viewRight, halfWidth, wispBottomY, wispTopY, bottomAlpha, topAlpha);
+                addSliceQuad(consumer, poseMatrix, cameraPos, anchor, tangent, halfWidth, sliceBottomY, sliceTopY, bottomAlpha, topAlpha);
             }
         }
     }
@@ -261,40 +260,27 @@ public final class FrostfireFogWallWorldRenderer
         return (float) (((hashed - Math.floor(hashed)) * 2.0D) - 1.0D);
     }
 
-    private static Vec3 horizontalViewRight(Vec3 cameraPos, Vec3 center)
-    {
-        Vec3 toCamera = cameraPos.subtract(center);
-        Vec3 horizontal = new Vec3(toCamera.x, 0.0D, toCamera.z);
-        if (horizontal.lengthSqr() < 1.0E-4D)
-        {
-            return new Vec3(1.0D, 0.0D, 0.0D);
-        }
-
-        Vec3 normalized = horizontal.normalize();
-        return new Vec3(-normalized.z, 0.0D, normalized.x);
-    }
-
     private static float radialWarp(Vec3 center, int shellIndex, double angle)
     {
         double wave = Math.sin((angle * 2.0D) + (shellIndex * 0.73D) + (center.x * 0.09D))
-                + (0.5D * Math.sin((angle * 5.0D) - (shellIndex * 0.41D) + (center.z * 0.07D)));
-        return (float) (wave * 0.38D);
+                + (0.35D * Math.sin((angle * 5.0D) - (shellIndex * 0.41D) + (center.z * 0.07D)));
+        return (float) (wave * 0.18D);
     }
 
     private static float heightWarp(Vec3 center, int shellIndex, int bandIndex, double angle)
     {
         double wave = Math.sin((angle * 2.0D) + (bandIndex * 0.61D) + (shellIndex * 0.29D) + (center.z * 0.06D))
                 + (0.35D * Math.sin((angle * 4.0D) - (bandIndex * 0.47D) + (center.x * 0.08D)));
-        return (float) (wave * 0.55D);
+        return (float) (wave * 0.32D);
     }
 
-    private static void addBillboardQuad(VertexConsumer consumer, Matrix4f poseMatrix, Vec3 center, Vec3 right,
-                                         float halfWidth, float bottomY, float topY, int bottomAlpha, int topAlpha)
+    private static void addSliceQuad(VertexConsumer consumer, Matrix4f poseMatrix, Vec3 cameraPos, Vec3 center, Vec3 tangent,
+                                     float halfWidth, float bottomY, float topY, int bottomAlpha, int topAlpha)
     {
-        float leftX = (float) (center.x - (right.x * halfWidth));
-        float leftZ = (float) (center.z - (right.z * halfWidth));
-        float rightX = (float) (center.x + (right.x * halfWidth));
-        float rightZ = (float) (center.z + (right.z * halfWidth));
+        float leftX = (float) (center.x - (tangent.x * halfWidth) - cameraPos.x);
+        float leftZ = (float) (center.z - (tangent.z * halfWidth) - cameraPos.z);
+        float rightX = (float) (center.x + (tangent.x * halfWidth) - cameraPos.x);
+        float rightZ = (float) (center.z + (tangent.z * halfWidth) - cameraPos.z);
 
         addVertex(consumer, poseMatrix, leftX, bottomY, leftZ, bottomAlpha);
         addVertex(consumer, poseMatrix, rightX, bottomY, rightZ, bottomAlpha);
