@@ -22,6 +22,9 @@ import net.minecraftforge.client.event.RenderLevelStageEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.joml.Matrix4f;
+import org.joml.Quaternionf;
+import org.joml.Vector3f;
+import org.joml.Vector4f;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,6 +34,7 @@ public final class FrostfireFogWallWorldRenderer
 {
     private static final RenderLevelStageEvent.Stage RENDER_STAGE = RenderLevelStageEvent.Stage.AFTER_LEVEL;
     private static final int MAX_ZONES = FrostfireClientWeatherCache.MAX_RENDERED_WALLS;
+    private static final float CAMERA_OUTSIDE_FADE_DISTANCE = 12.0F;
     private static final float WALL_HALF_THICKNESS = 14.5F;
     private static final float WALL_BOTTOM_OFFSET = -34.0F;
     private static final float WALL_TOP_OFFSET_CLEAR = 58.0F;
@@ -89,7 +93,7 @@ public final class FrostfireFogWallWorldRenderer
         List<FrostfireClientWeatherCache.WeatherZoneSnapshot> visible = new ArrayList<>(zones.size());
         for (FrostfireClientWeatherCache.WeatherZoneSnapshot zone : zones)
         {
-            if (!isCameraInsideZone(zone, cameraPos))
+            if (!isCameraNearZone(zone, cameraPos))
             {
                 continue;
             }
@@ -117,32 +121,33 @@ public final class FrostfireFogWallWorldRenderer
         return visible;
     }
 
-    private static boolean isCameraInsideZone(FrostfireClientWeatherCache.WeatherZoneSnapshot zone, Vec3 cameraPos)
+    private static boolean isCameraNearZone(FrostfireClientWeatherCache.WeatherZoneSnapshot zone, Vec3 cameraPos)
     {
         double dx = cameraPos.x - zone.center().x;
         double dz = cameraPos.z - zone.center().z;
-        return (dx * dx) + (dz * dz) < (zone.radius() * zone.radius());
+        double fadeRadius = zone.radius() + WALL_HALF_THICKNESS + CAMERA_OUTSIDE_FADE_DISTANCE;
+        return (dx * dx) + (dz * dz) < (fadeRadius * fadeRadius);
     }
 
     private static void configureShader(ShaderInstance shader, RenderLevelStageEvent event, Camera camera, Vec3 cameraPos,
                                         List<FrostfireClientWeatherCache.WeatherZoneSnapshot> visibleZones,
                                         float weatherIntensity, float wallTime, RenderTarget mainRenderTarget)
     {
-        Camera.NearPlane nearPlane = camera.getNearPlane();
-        Vec3 topLeft = nearPlane.getTopLeft();
-        Vec3 topRight = nearPlane.getTopRight();
-        Vec3 bottomLeft = nearPlane.getBottomLeft();
-        Vec3 bottomRight = nearPlane.getBottomRight();
         Matrix4f inverseProjection = new Matrix4f(event.getProjectionMatrix()).invert();
+        Quaternionf cameraRotation = new Quaternionf(camera.rotation());
+        Vec3 topLeft = projectFarRay(inverseProjection, cameraRotation, -1.0F, 1.0F);
+        Vec3 topRight = projectFarRay(inverseProjection, cameraRotation, 1.0F, 1.0F);
+        Vec3 bottomLeft = projectFarRay(inverseProjection, cameraRotation, -1.0F, -1.0F);
+        Vec3 bottomRight = projectFarRay(inverseProjection, cameraRotation, 1.0F, -1.0F);
         float wallTopOffset = Mth.lerp(weatherIntensity, WALL_TOP_OFFSET_CLEAR, WALL_TOP_OFFSET_STORM);
 
         shader.safeGetUniform("InverseProjMat").set(inverseProjection);
         shader.safeGetUniform("TargetSize").set((float) mainRenderTarget.width, (float) mainRenderTarget.height);
         shader.safeGetUniform("CameraPos").set((float) cameraPos.x, (float) cameraPos.y, (float) cameraPos.z);
-        shader.safeGetUniform("NearTopLeft").set((float) topLeft.x, (float) topLeft.y, (float) topLeft.z);
-        shader.safeGetUniform("NearTopRight").set((float) topRight.x, (float) topRight.y, (float) topRight.z);
-        shader.safeGetUniform("NearBottomLeft").set((float) bottomLeft.x, (float) bottomLeft.y, (float) bottomLeft.z);
-        shader.safeGetUniform("NearBottomRight").set((float) bottomRight.x, (float) bottomRight.y, (float) bottomRight.z);
+        shader.safeGetUniform("FarTopLeft").set((float) topLeft.x, (float) topLeft.y, (float) topLeft.z);
+        shader.safeGetUniform("FarTopRight").set((float) topRight.x, (float) topRight.y, (float) topRight.z);
+        shader.safeGetUniform("FarBottomLeft").set((float) bottomLeft.x, (float) bottomLeft.y, (float) bottomLeft.z);
+        shader.safeGetUniform("FarBottomRight").set((float) bottomRight.x, (float) bottomRight.y, (float) bottomRight.z);
         shader.safeGetUniform("Time").set(wallTime);
         shader.safeGetUniform("WeatherIntensity").set(weatherIntensity);
         shader.safeGetUniform("WallHalfThickness").set(WALL_HALF_THICKNESS);
@@ -218,5 +223,15 @@ public final class FrostfireFogWallWorldRenderer
         }
 
         return depthSnapshotTarget;
+    }
+
+    private static Vec3 projectFarRay(Matrix4f inverseProjection, Quaternionf cameraRotation, float ndcX, float ndcY)
+    {
+        Vector4f viewCorner = new Vector4f(ndcX, ndcY, 1.0F, 1.0F);
+        inverseProjection.transform(viewCorner);
+        float inverseW = 1.0F / Math.max(viewCorner.w, 0.0001F);
+        Vector3f worldDirection = new Vector3f(viewCorner.x * inverseW, viewCorner.y * inverseW, viewCorner.z * inverseW);
+        cameraRotation.transform(worldDirection);
+        return new Vec3(worldDirection.x, worldDirection.y, worldDirection.z);
     }
 }

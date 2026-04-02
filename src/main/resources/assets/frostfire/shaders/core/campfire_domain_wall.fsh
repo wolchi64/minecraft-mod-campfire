@@ -6,10 +6,10 @@ uniform vec2 TargetSize;
 uniform vec4 FogColor;
 uniform mat4 InverseProjMat;
 uniform vec3 CameraPos;
-uniform vec3 NearTopLeft;
-uniform vec3 NearTopRight;
-uniform vec3 NearBottomLeft;
-uniform vec3 NearBottomRight;
+uniform vec3 FarTopLeft;
+uniform vec3 FarTopRight;
+uniform vec3 FarBottomLeft;
+uniform vec3 FarBottomRight;
 uniform float Time;
 uniform float WeatherIntensity;
 uniform float WallHalfThickness;
@@ -39,6 +39,7 @@ const float CLOSE_OCCLUDER_FADE_END = 10.0;
 const float DEPTH_SOFTEN_SPREAD_NEAR = 1.5;
 const float DEPTH_SOFTEN_SPREAD_FAR = 8.0;
 const float DEPTH_SOFTEN_BLEND = 0.65;
+const float CAMERA_OUTSIDE_FADE_DISTANCE = 12.0;
 const int MAX_ZONES = 8;
 
 float hash(vec3 p) {
@@ -210,6 +211,11 @@ float zoneContribution(vec4 zone, vec3 rayDir, float tMax, float stormFactor) {
     vec3 localOrigin = CameraPos - zone.xyz;
     float outerRadius = zone.w + WallHalfThickness;
     float innerRadius = max(zone.w, 0.0);
+    float cameraDistance = length(localOrigin.xz);
+    float cameraFade = 1.0 - smoothstep(innerRadius, innerRadius + CAMERA_OUTSIDE_FADE_DISTANCE, cameraDistance);
+    if (cameraFade <= 0.0001) {
+        return 0.0;
+    }
 
     vec2 outerInterval = cylinderInterval(localOrigin, rayDir, outerRadius, tMax);
     float outerLength = intervalLength(outerInterval);
@@ -264,16 +270,17 @@ float zoneContribution(vec4 zone, vec3 rayDir, float tMax, float stormFactor) {
     density *= visibilityFactor;
     density *= edgeFactor;
     density *= verticalFactor;
+    density *= cameraFade;
     return density;
 }
 
 void main() {
     vec2 uv = clamp(TexCoord, vec2(0.0), vec2(1.0));
-    vec3 nearPoint = mix(
-        mix(NearBottomLeft, NearBottomRight, uv.x),
-        mix(NearTopLeft, NearTopRight, uv.x),
+    vec3 farPoint = mix(
+        mix(FarBottomLeft, FarBottomRight, uv.x),
+        mix(FarTopLeft, FarTopRight, uv.x),
         uv.y);
-    vec3 rayDir = normalize(nearPoint);
+    vec3 rayDir = normalize(farPoint);
 
     float occlusionFade;
     float tMax = stableDepthDistance(uv, occlusionFade);
@@ -306,5 +313,5 @@ void main() {
         return;
     }
 
-    fragColor = vec4(vec3(1.0), alpha);
+    fragColor = vec4(vec3(0.93, 0.93, 0.97), alpha);
 }
