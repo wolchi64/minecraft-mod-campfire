@@ -32,6 +32,8 @@ const float SKY_DEPTH_THRESHOLD = 0.99999;
 const float EPSILON = 0.0001;
 const float VERTICAL_FADE = 32.0;
 const float VERTICAL_CLIP_MARGIN = 48.0;
+const float MIN_VISIBLE_BAND = 0.75;
+const float FULL_VISIBLE_BAND = 3.5;
 const int MAX_ZONES = 8;
 
 float hash(vec3 p) {
@@ -194,6 +196,10 @@ float zoneContribution(vec4 zone, vec3 rayDir, float tMax, float stormFactor) {
     if (bandLength <= 0.0) {
         return 0.0;
     }
+    float visibilityFactor = smoothstep(MIN_VISIBLE_BAND, FULL_VISIBLE_BAND, bandLength);
+    if (visibilityFactor <= 0.0001) {
+        return 0.0;
+    }
 
     float sampleT = bandSampleT(outerInterval, innerInterval, innerRadius);
     vec3 worldSample = CameraPos + (rayDir * sampleT);
@@ -223,6 +229,7 @@ float zoneContribution(vec4 zone, vec3 rayDir, float tMax, float stormFactor) {
     density *= mix(0.78, 1.18, bodyNoise);
     density *= mix(0.90, 1.08, detailNoise);
     density *= mix(0.60, 1.0, erosionNoise);
+    density *= visibilityFactor;
     density *= edgeFactor;
     density *= verticalFactor;
     return density;
