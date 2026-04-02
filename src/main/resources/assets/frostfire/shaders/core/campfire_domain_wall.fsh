@@ -32,8 +32,11 @@ const float SKY_DEPTH_THRESHOLD = 0.99999;
 const float EPSILON = 0.0001;
 const float VERTICAL_FADE = 32.0;
 const float VERTICAL_CLIP_MARGIN = 48.0;
-const float MIN_VISIBLE_BAND = 0.75;
-const float FULL_VISIBLE_BAND = 3.5;
+const float MIN_VISIBLE_BAND = 1.35;
+const float FULL_VISIBLE_BAND = 5.0;
+const float DEPTH_EDGE_FADE_NEAR = 1.0;
+const float DEPTH_EDGE_FADE_FAR = 4.5;
+const float NEIGHBOR_DEPTH_BIAS = 0.35;
 const int MAX_ZONES = 8;
 
 float hash(vec3 p) {
@@ -95,6 +98,39 @@ vec2 intersectIntervals(vec2 a, vec2 b) {
 
 float intervalLength(vec2 interval) {
     return max(0.0, interval.y - interval.x);
+}
+
+float viewDistanceFromDepth(vec2 uv, float depthSample) {
+    if (depthSample >= SKY_DEPTH_THRESHOLD) {
+        return FarPlaneDistance;
+    }
+
+    vec2 ndc = (uv * 2.0) - 1.0;
+    vec4 clipHit = vec4(ndc, (depthSample * 2.0) - 1.0, 1.0);
+    vec4 viewHit = InverseProjMat * clipHit;
+    viewHit /= max(viewHit.w, EPSILON);
+    return length(viewHit.xyz);
+}
+
+float stableDepthDistance(vec2 uv, out float occlusionFade) {
+    vec2 texel = 1.0 / ScreenSize;
+    vec2 uvLeft = clamp(uv + vec2(-texel.x, 0.0), texel * 0.5, vec2(1.0) - (texel * 0.5));
+    vec2 uvRight = clamp(uv + vec2(texel.x, 0.0), texel * 0.5, vec2(1.0) - (texel * 0.5));
+    vec2 uvUp = clamp(uv + vec2(0.0, texel.y), texel * 0.5, vec2(1.0) - (texel * 0.5));
+    vec2 uvDown = clamp(uv + vec2(0.0, -texel.y), texel * 0.5, vec2(1.0) - (texel * 0.5));
+
+    float centerDistance = viewDistanceFromDepth(uv, texture(Sampler0, uv).r);
+    float leftDistance = viewDistanceFromDepth(uvLeft, texture(Sampler0, uvLeft).r);
+    float rightDistance = viewDistanceFromDepth(uvRight, texture(Sampler0, uvRight).r);
+    float upDistance = viewDistanceFromDepth(uvUp, texture(Sampler0, uvUp).r);
+    float downDistance = viewDistanceFromDepth(uvDown, texture(Sampler0, uvDown).r);
+
+    float minDistance = min(centerDistance, min(min(leftDistance, rightDistance), min(upDistance, downDistance)));
+    float maxDistance = max(centerDistance, max(max(leftDistance, rightDistance), max(upDistance, downDistance)));
+    float spread = maxDistance - minDistance;
+
+    occlusionFade = 1.0 - smoothstep(DEPTH_EDGE_FADE_NEAR, DEPTH_EDGE_FADE_FAR, spread);
+    return min(centerDistance, minDistance + NEIGHBOR_DEPTH_BIAS);
 }
 
 vec2 slabInterval(vec3 origin, vec3 rayDir, float minY, float maxY, float tMax) {
@@ -237,24 +273,14 @@ float zoneContribution(vec4 zone, vec3 rayDir, float tMax, float stormFactor) {
 
 void main() {
     vec2 uv = gl_FragCoord.xy / ScreenSize;
-    float depth = texture(Sampler0, uv).r;
-
-    vec2 ndc = (uv * 2.0) - 1.0;
     vec3 nearPoint = mix(
         mix(NearBottomLeft, NearBottomRight, uv.x),
         mix(NearTopLeft, NearTopRight, uv.x),
         uv.y);
     vec3 rayDir = normalize(nearPoint);
 
-    float tMax;
-    if (depth >= SKY_DEPTH_THRESHOLD) {
-        tMax = FarPlaneDistance;
-    } else {
-        vec4 clipHit = vec4(ndc, (depth * 2.0) - 1.0, 1.0);
-        vec4 viewHit = InverseProjMat * clipHit;
-        viewHit /= max(viewHit.w, EPSILON);
-        tMax = length(viewHit.xyz);
-    }
+    float occlusionFade;
+    float tMax = stableDepthDistance(uv, occlusionFade);
 
     if (tMax <= EPSILON) {
         fragColor = vec4(0.0);
@@ -276,6 +302,7 @@ void main() {
         totalDensity += zoneContribution(zone, rayDir, tMax, stormFactor);
     }
 
+    totalDensity *= occlusionFade;
     float alpha = 1.0 - exp(-totalDensity);
     alpha = clamp(alpha, 0.0, 0.82);
     if (alpha <= 0.002) {
