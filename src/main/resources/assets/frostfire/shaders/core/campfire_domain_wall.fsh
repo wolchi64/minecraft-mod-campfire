@@ -256,11 +256,11 @@ float zoneContribution(vec4 zone, vec3 rayDir, float tMax, float stormFactor) {
     float detailNoise = smoothstep(0.24, 0.76, fbm(detailSample));
     float erosionNoise = 1.0 - smoothstep(mix(0.66, 0.72, stormFactor), mix(0.88, 0.94, stormFactor), fbm(erosionSample));
 
-    float densityPerBlock = mix(0.09, 0.155, stormFactor);
+    float densityPerBlock = mix(0.12, 0.20, stormFactor);
     float density = bandLength * densityPerBlock;
     density *= mix(0.78, 1.18, bodyNoise);
     density *= mix(0.90, 1.08, detailNoise);
-    density *= mix(0.72, 1.04, erosionNoise);
+    density *= mix(0.82, 1.08, erosionNoise);
     density *= visibilityFactor;
     density *= edgeFactor;
     density *= verticalFactor;
@@ -300,7 +300,7 @@ void main() {
 
     totalDensity *= occlusionFade;
     float alpha = 1.0 - exp(-totalDensity);
-    alpha = clamp(alpha, 0.0, 0.95);
+    alpha = clamp(alpha, 0.0, 0.98);
     if (alpha <= 0.002) {
         fragColor = vec4(0.0);
         return;
