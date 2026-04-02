@@ -34,9 +34,10 @@ const float VERTICAL_FADE = 32.0;
 const float VERTICAL_CLIP_MARGIN = 48.0;
 const float MIN_VISIBLE_BAND = 1.35;
 const float FULL_VISIBLE_BAND = 5.0;
-const float DEPTH_EDGE_FADE_NEAR = 1.0;
-const float DEPTH_EDGE_FADE_FAR = 4.5;
-const float NEIGHBOR_DEPTH_BIAS = 0.35;
+const float CLOSE_OCCLUDER_FADE_START = 6.0;
+const float CLOSE_OCCLUDER_FADE_END = 10.0;
+const float CLOSE_EDGE_REJECT_NEAR = 1.0;
+const float CLOSE_EDGE_REJECT_FAR = 3.0;
 const int MAX_ZONES = 8;
 
 float hash(vec3 p) {
@@ -100,6 +101,26 @@ float intervalLength(vec2 interval) {
     return max(0.0, interval.y - interval.x);
 }
 
+void sortPair(inout float a, inout float b) {
+    if (a > b) {
+        float swap = a;
+        a = b;
+        b = swap;
+    }
+}
+
+float median5(float a, float b, float c, float d, float e) {
+    sortPair(a, b);
+    sortPair(c, d);
+    sortPair(a, c);
+    sortPair(b, d);
+    sortPair(b, c);
+    sortPair(d, e);
+    sortPair(c, d);
+    sortPair(b, c);
+    return c;
+}
+
 float viewDistanceFromDepth(vec2 uv, float depthSample) {
     if (depthSample >= SKY_DEPTH_THRESHOLD) {
         return FarPlaneDistance;
@@ -127,10 +148,13 @@ float stableDepthDistance(vec2 uv, out float occlusionFade) {
 
     float minDistance = min(centerDistance, min(min(leftDistance, rightDistance), min(upDistance, downDistance)));
     float maxDistance = max(centerDistance, max(max(leftDistance, rightDistance), max(upDistance, downDistance)));
+    float medianDistance = median5(centerDistance, leftDistance, rightDistance, upDistance, downDistance);
     float spread = maxDistance - minDistance;
+    float closeFade = smoothstep(CLOSE_OCCLUDER_FADE_START, CLOSE_OCCLUDER_FADE_END, medianDistance);
+    float edgeFade = 1.0 - smoothstep(CLOSE_EDGE_REJECT_NEAR, CLOSE_EDGE_REJECT_FAR, spread);
 
-    occlusionFade = 1.0 - smoothstep(DEPTH_EDGE_FADE_NEAR, DEPTH_EDGE_FADE_FAR, spread);
-    return min(centerDistance, minDistance + NEIGHBOR_DEPTH_BIAS);
+    occlusionFade = closeFade * mix(edgeFade, 1.0, closeFade);
+    return medianDistance;
 }
 
 vec2 slabInterval(vec3 origin, vec3 rayDir, float minY, float maxY, float tMax) {
