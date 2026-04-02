@@ -31,10 +31,10 @@ public final class FrostfireFogWallWorldRenderer
 {
     private static final RenderLevelStageEvent.Stage RENDER_STAGE = RenderLevelStageEvent.Stage.AFTER_LEVEL;
     private static final int MAX_ZONES = FrostfireClientWeatherCache.MAX_RENDERED_WALLS;
-    private static final float WALL_HALF_THICKNESS = 8.75F;
+    private static final float WALL_HALF_THICKNESS = 11.5F;
     private static final float WALL_BOTTOM_OFFSET = -34.0F;
-    private static final float WALL_TOP_OFFSET_CLEAR = 82.0F;
-    private static final float WALL_TOP_OFFSET_STORM = 96.0F;
+    private static final float WALL_TOP_OFFSET_CLEAR = 96.0F;
+    private static final float WALL_TOP_OFFSET_STORM = 118.0F;
     private static TextureTarget depthSnapshotTarget;
 
     private FrostfireFogWallWorldRenderer() {}
