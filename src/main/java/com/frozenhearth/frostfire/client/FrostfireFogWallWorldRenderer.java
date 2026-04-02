@@ -74,7 +74,7 @@ public final class FrostfireFogWallWorldRenderer
 
         float weatherIntensity = FrostfireClientWeatherCache.getWallWeatherIntensity(event.getPartialTick());
         float wallTime = (minecraft.level.getGameTime() + event.getPartialTick()) * 0.05F;
-        configureShader(shader, event, cameraPos, visibleZones, weatherIntensity, wallTime);
+        configureShader(shader, event, camera, cameraPos, visibleZones, weatherIntensity, wallTime);
         renderFogVolume(shader, minecraft.getMainRenderTarget());
     }
 
@@ -106,16 +106,16 @@ public final class FrostfireFogWallWorldRenderer
         return visible;
     }
 
-    private static void configureShader(ShaderInstance shader, RenderLevelStageEvent event, Vec3 cameraPos,
+    private static void configureShader(ShaderInstance shader, RenderLevelStageEvent event, Camera camera, Vec3 cameraPos,
                                         List<FrostfireClientWeatherCache.WeatherZoneSnapshot> visibleZones,
                                         float weatherIntensity, float wallTime)
     {
         Matrix4f inverseProjection = new Matrix4f(event.getProjectionMatrix()).invert();
-        Matrix4f inverseModelView = new Matrix4f(event.getPoseStack().last().pose()).invert();
+        Matrix4f inverseViewRotation = new Matrix4f().rotation(camera.rotation());
         float wallTopOffset = Mth.lerp(weatherIntensity, WALL_TOP_OFFSET_CLEAR, WALL_TOP_OFFSET_STORM);
 
         shader.safeGetUniform("InverseProjMat").set(inverseProjection);
-        shader.safeGetUniform("InverseModelViewMat").set(inverseModelView);
+        shader.safeGetUniform("InverseViewRotMat").set(inverseViewRotation);
         shader.safeGetUniform("CameraPos").set((float) cameraPos.x, (float) cameraPos.y, (float) cameraPos.z);
         shader.safeGetUniform("Time").set(wallTime);
         shader.safeGetUniform("WeatherIntensity").set(weatherIntensity);

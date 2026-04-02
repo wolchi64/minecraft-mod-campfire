@@ -5,7 +5,7 @@ uniform sampler2D Sampler0;
 uniform vec2 ScreenSize;
 uniform vec4 FogColor;
 uniform mat4 InverseProjMat;
-uniform mat4 InverseModelViewMat;
+uniform mat4 InverseViewRotMat;
 uniform vec3 CameraPos;
 uniform float Time;
 uniform float WeatherIntensity;
@@ -223,8 +223,7 @@ void main() {
     vec4 clipFar = vec4(ndc, 1.0, 1.0);
     vec4 viewFar = InverseProjMat * clipFar;
     viewFar /= max(viewFar.w, EPSILON);
-    vec3 worldFar = (InverseModelViewMat * vec4(viewFar.xyz, 1.0)).xyz;
-    vec3 rayDir = normalize(worldFar - CameraPos);
+    vec3 rayDir = normalize((InverseViewRotMat * vec4(viewFar.xyz, 0.0)).xyz);
 
     float tMax;
     if (depth >= SKY_DEPTH_THRESHOLD) {
@@ -233,8 +232,7 @@ void main() {
         vec4 clipHit = vec4(ndc, (depth * 2.0) - 1.0, 1.0);
         vec4 viewHit = InverseProjMat * clipHit;
         viewHit /= max(viewHit.w, EPSILON);
-        vec3 worldHit = (InverseModelViewMat * vec4(viewHit.xyz, 1.0)).xyz;
-        tMax = length(worldHit - CameraPos);
+        tMax = length(viewHit.xyz);
     }
 
     if (tMax <= EPSILON) {
