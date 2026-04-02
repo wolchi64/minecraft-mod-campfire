@@ -35,8 +35,9 @@ const float MIN_VISIBLE_BAND = 1.35;
 const float FULL_VISIBLE_BAND = 5.0;
 const float CLOSE_OCCLUDER_FADE_START = 6.0;
 const float CLOSE_OCCLUDER_FADE_END = 10.0;
-const float CLOSE_EDGE_REJECT_NEAR = 1.0;
-const float CLOSE_EDGE_REJECT_FAR = 3.0;
+const float DEPTH_SOFTEN_SPREAD_NEAR = 1.5;
+const float DEPTH_SOFTEN_SPREAD_FAR = 8.0;
+const float DEPTH_SOFTEN_BLEND = 0.65;
 const int MAX_ZONES = 8;
 
 float hash(vec3 p) {
@@ -100,26 +101,6 @@ float intervalLength(vec2 interval) {
     return max(0.0, interval.y - interval.x);
 }
 
-void sortPair(inout float a, inout float b) {
-    if (a > b) {
-        float swap = a;
-        a = b;
-        b = swap;
-    }
-}
-
-float median5(float a, float b, float c, float d, float e) {
-    sortPair(a, b);
-    sortPair(c, d);
-    sortPair(a, c);
-    sortPair(b, d);
-    sortPair(b, c);
-    sortPair(d, e);
-    sortPair(c, d);
-    sortPair(b, c);
-    return c;
-}
-
 float viewDistanceFromDepth(vec2 uv, float depthSample) {
     if (depthSample >= SKY_DEPTH_THRESHOLD) {
         return FarPlaneDistance;
@@ -134,26 +115,45 @@ float viewDistanceFromDepth(vec2 uv, float depthSample) {
 
 float stableDepthDistance(vec2 uv, out float occlusionFade) {
     vec2 texel = 1.0 / ScreenSize;
-    vec2 uvLeft = clamp(uv + vec2(-texel.x, 0.0), texel * 0.5, vec2(1.0) - (texel * 0.5));
-    vec2 uvRight = clamp(uv + vec2(texel.x, 0.0), texel * 0.5, vec2(1.0) - (texel * 0.5));
-    vec2 uvUp = clamp(uv + vec2(0.0, texel.y), texel * 0.5, vec2(1.0) - (texel * 0.5));
-    vec2 uvDown = clamp(uv + vec2(0.0, -texel.y), texel * 0.5, vec2(1.0) - (texel * 0.5));
+    vec2 minUv = texel * 0.5;
+    vec2 maxUv = vec2(1.0) - minUv;
+
+    vec2 uvLeft = clamp(uv + vec2(-texel.x, 0.0), minUv, maxUv);
+    vec2 uvRight = clamp(uv + vec2(texel.x, 0.0), minUv, maxUv);
+    vec2 uvUp = clamp(uv + vec2(0.0, texel.y), minUv, maxUv);
+    vec2 uvDown = clamp(uv + vec2(0.0, -texel.y), minUv, maxUv);
+    vec2 uvUpLeft = clamp(uv + vec2(-texel.x, texel.y), minUv, maxUv);
+    vec2 uvUpRight = clamp(uv + vec2(texel.x, texel.y), minUv, maxUv);
+    vec2 uvDownLeft = clamp(uv + vec2(-texel.x, -texel.y), minUv, maxUv);
+    vec2 uvDownRight = clamp(uv + vec2(texel.x, -texel.y), minUv, maxUv);
 
     float centerDistance = viewDistanceFromDepth(uv, texture(Sampler0, uv).r);
     float leftDistance = viewDistanceFromDepth(uvLeft, texture(Sampler0, uvLeft).r);
     float rightDistance = viewDistanceFromDepth(uvRight, texture(Sampler0, uvRight).r);
     float upDistance = viewDistanceFromDepth(uvUp, texture(Sampler0, uvUp).r);
     float downDistance = viewDistanceFromDepth(uvDown, texture(Sampler0, uvDown).r);
+    float upLeftDistance = viewDistanceFromDepth(uvUpLeft, texture(Sampler0, uvUpLeft).r);
+    float upRightDistance = viewDistanceFromDepth(uvUpRight, texture(Sampler0, uvUpRight).r);
+    float downLeftDistance = viewDistanceFromDepth(uvDownLeft, texture(Sampler0, uvDownLeft).r);
+    float downRightDistance = viewDistanceFromDepth(uvDownRight, texture(Sampler0, uvDownRight).r);
 
-    float minDistance = min(centerDistance, min(min(leftDistance, rightDistance), min(upDistance, downDistance)));
-    float maxDistance = max(centerDistance, max(max(leftDistance, rightDistance), max(upDistance, downDistance)));
-    float medianDistance = median5(centerDistance, leftDistance, rightDistance, upDistance, downDistance);
+    float minDistance = min(centerDistance,
+        min(min(leftDistance, rightDistance),
+        min(min(upDistance, downDistance),
+        min(min(upLeftDistance, upRightDistance), min(downLeftDistance, downRightDistance)))));
+    float maxDistance = max(centerDistance,
+        max(max(leftDistance, rightDistance),
+        max(max(upDistance, downDistance),
+        max(max(upLeftDistance, upRightDistance), max(downLeftDistance, downRightDistance)))));
+    float averageDistance = (
+        centerDistance + leftDistance + rightDistance + upDistance + downDistance +
+        upLeftDistance + upRightDistance + downLeftDistance + downRightDistance) / 9.0;
     float spread = maxDistance - minDistance;
-    float closeFade = smoothstep(CLOSE_OCCLUDER_FADE_START, CLOSE_OCCLUDER_FADE_END, medianDistance);
-    float edgeFade = 1.0 - smoothstep(CLOSE_EDGE_REJECT_NEAR, CLOSE_EDGE_REJECT_FAR, spread);
+    float softenFactor = smoothstep(DEPTH_SOFTEN_SPREAD_NEAR, DEPTH_SOFTEN_SPREAD_FAR, spread);
+    float softenedDistance = mix(averageDistance, maxDistance, softenFactor * DEPTH_SOFTEN_BLEND);
 
-    occlusionFade = closeFade * mix(edgeFade, 1.0, closeFade);
-    return medianDistance;
+    occlusionFade = smoothstep(CLOSE_OCCLUDER_FADE_START, CLOSE_OCCLUDER_FADE_END, averageDistance);
+    return softenedDistance;
 }
 
 vec2 cylinderInterval(vec3 origin, vec3 rayDir, float radius, float tMax) {
