@@ -28,7 +28,7 @@ import java.util.List;
 @Mod.EventBusSubscriber(modid = FrostfireCampfireMod.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE, value = Dist.CLIENT)
 public final class FrostfireFogWallWorldRenderer
 {
-    private static final RenderLevelStageEvent.Stage RENDER_STAGE = RenderLevelStageEvent.Stage.AFTER_PARTICLES;
+    private static final RenderLevelStageEvent.Stage RENDER_STAGE = RenderLevelStageEvent.Stage.AFTER_LEVEL;
     private static final int MAX_ZONES = FrostfireClientWeatherCache.MAX_RENDERED_WALLS;
     private static final float WALL_HALF_THICKNESS = 8.75F;
     private static final float WALL_BOTTOM_OFFSET = -34.0F;
