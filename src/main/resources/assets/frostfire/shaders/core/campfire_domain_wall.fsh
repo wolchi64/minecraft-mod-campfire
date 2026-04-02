@@ -6,10 +6,10 @@ uniform vec2 TargetSize;
 uniform vec4 FogColor;
 uniform mat4 InverseProjMat;
 uniform vec3 CameraPos;
-uniform vec3 FarTopLeft;
-uniform vec3 FarTopRight;
-uniform vec3 FarBottomLeft;
-uniform vec3 FarBottomRight;
+uniform vec3 NearTopLeft;
+uniform vec3 NearTopRight;
+uniform vec3 NearBottomLeft;
+uniform vec3 NearBottomRight;
 uniform float Time;
 uniform float WeatherIntensity;
 uniform float WallHalfThickness;
@@ -276,11 +276,11 @@ float zoneContribution(vec4 zone, vec3 rayDir, float tMax, float stormFactor) {
 
 void main() {
     vec2 uv = clamp(TexCoord, vec2(0.0), vec2(1.0));
-    vec3 farPoint = mix(
-        mix(FarBottomLeft, FarBottomRight, uv.x),
-        mix(FarTopLeft, FarTopRight, uv.x),
+    vec3 nearPoint = mix(
+        mix(NearBottomLeft, NearBottomRight, uv.x),
+        mix(NearTopLeft, NearTopRight, uv.x),
         uv.y);
-    vec3 rayDir = normalize(farPoint);
+    vec3 rayDir = normalize(nearPoint);
 
     float occlusionFade;
     float tMax = stableDepthDistance(uv, occlusionFade);
