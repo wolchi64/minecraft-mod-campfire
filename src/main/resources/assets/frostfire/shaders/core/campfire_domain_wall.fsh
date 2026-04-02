@@ -5,8 +5,11 @@ uniform sampler2D Sampler0;
 uniform vec2 ScreenSize;
 uniform vec4 FogColor;
 uniform mat4 InverseProjMat;
-uniform mat4 InverseViewRotMat;
 uniform vec3 CameraPos;
+uniform vec3 NearTopLeft;
+uniform vec3 NearTopRight;
+uniform vec3 NearBottomLeft;
+uniform vec3 NearBottomRight;
 uniform float Time;
 uniform float WeatherIntensity;
 uniform float WallHalfThickness;
@@ -220,10 +223,11 @@ void main() {
     float depth = texture(Sampler0, uv).r;
 
     vec2 ndc = (uv * 2.0) - 1.0;
-    vec4 clipFar = vec4(ndc, 1.0, 1.0);
-    vec4 viewFar = InverseProjMat * clipFar;
-    viewFar /= max(viewFar.w, EPSILON);
-    vec3 rayDir = normalize((InverseViewRotMat * vec4(viewFar.xyz, 0.0)).xyz);
+    vec3 nearPoint = mix(
+        mix(NearBottomLeft, NearBottomRight, uv.x),
+        mix(NearTopLeft, NearTopRight, uv.x),
+        uv.y);
+    vec3 rayDir = normalize(nearPoint);
 
     float tMax;
     if (depth >= SKY_DEPTH_THRESHOLD) {

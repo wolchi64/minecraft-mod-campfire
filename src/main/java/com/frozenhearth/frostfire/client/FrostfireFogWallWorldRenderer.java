@@ -110,13 +110,20 @@ public final class FrostfireFogWallWorldRenderer
                                         List<FrostfireClientWeatherCache.WeatherZoneSnapshot> visibleZones,
                                         float weatherIntensity, float wallTime)
     {
+        Camera.NearPlane nearPlane = camera.getNearPlane();
+        Vec3 topLeft = nearPlane.getTopLeft();
+        Vec3 topRight = nearPlane.getTopRight();
+        Vec3 bottomLeft = nearPlane.getBottomLeft();
+        Vec3 bottomRight = nearPlane.getBottomRight();
         Matrix4f inverseProjection = new Matrix4f(event.getProjectionMatrix()).invert();
-        Matrix4f inverseViewRotation = new Matrix4f().rotation(camera.rotation());
         float wallTopOffset = Mth.lerp(weatherIntensity, WALL_TOP_OFFSET_CLEAR, WALL_TOP_OFFSET_STORM);
 
         shader.safeGetUniform("InverseProjMat").set(inverseProjection);
-        shader.safeGetUniform("InverseViewRotMat").set(inverseViewRotation);
         shader.safeGetUniform("CameraPos").set((float) cameraPos.x, (float) cameraPos.y, (float) cameraPos.z);
+        shader.safeGetUniform("NearTopLeft").set((float) topLeft.x, (float) topLeft.y, (float) topLeft.z);
+        shader.safeGetUniform("NearTopRight").set((float) topRight.x, (float) topRight.y, (float) topRight.z);
+        shader.safeGetUniform("NearBottomLeft").set((float) bottomLeft.x, (float) bottomLeft.y, (float) bottomLeft.z);
+        shader.safeGetUniform("NearBottomRight").set((float) bottomRight.x, (float) bottomRight.y, (float) bottomRight.z);
         shader.safeGetUniform("Time").set(wallTime);
         shader.safeGetUniform("WeatherIntensity").set(weatherIntensity);
         shader.safeGetUniform("WallHalfThickness").set(WALL_HALF_THICKNESS);
