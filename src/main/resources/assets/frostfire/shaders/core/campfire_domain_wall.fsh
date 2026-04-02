@@ -2,7 +2,7 @@
 
 uniform sampler2D Sampler0;
 
-uniform vec2 ScreenSize;
+uniform vec2 TargetSize;
 uniform vec4 FogColor;
 uniform mat4 InverseProjMat;
 uniform vec3 CameraPos;
@@ -26,6 +26,7 @@ uniform vec4 Zone5;
 uniform vec4 Zone6;
 uniform vec4 Zone7;
 
+in vec2 TexCoord;
 out vec4 fragColor;
 
 const float SKY_DEPTH_THRESHOLD = 0.99999;
@@ -114,7 +115,7 @@ float viewDistanceFromDepth(vec2 uv, float depthSample) {
 }
 
 float stableDepthDistance(vec2 uv, out float occlusionFade) {
-    vec2 texel = 1.0 / ScreenSize;
+    vec2 texel = 1.0 / TargetSize;
     vec2 minUv = texel * 0.5;
     vec2 maxUv = vec2(1.0) - minUv;
 
@@ -267,7 +268,7 @@ float zoneContribution(vec4 zone, vec3 rayDir, float tMax, float stormFactor) {
 }
 
 void main() {
-    vec2 uv = gl_FragCoord.xy / ScreenSize;
+    vec2 uv = clamp(TexCoord, vec2(0.0), vec2(1.0));
     vec3 nearPoint = mix(
         mix(NearBottomLeft, NearBottomRight, uv.x),
         mix(NearTopLeft, NearTopRight, uv.x),

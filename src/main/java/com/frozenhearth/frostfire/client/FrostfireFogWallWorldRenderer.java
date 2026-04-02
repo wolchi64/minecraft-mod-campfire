@@ -74,8 +74,9 @@ public final class FrostfireFogWallWorldRenderer
 
         float weatherIntensity = FrostfireClientWeatherCache.getWallWeatherIntensity(event.getPartialTick());
         float wallTime = (minecraft.level.getGameTime() + event.getPartialTick()) * 0.05F;
-        configureShader(shader, event, camera, cameraPos, visibleZones, weatherIntensity, wallTime);
-        renderFogVolume(shader, minecraft.getMainRenderTarget());
+        RenderTarget mainRenderTarget = minecraft.getMainRenderTarget();
+        configureShader(shader, event, camera, cameraPos, visibleZones, weatherIntensity, wallTime, mainRenderTarget);
+        renderFogVolume(shader, mainRenderTarget);
     }
 
     private static List<FrostfireClientWeatherCache.WeatherZoneSnapshot> filterVisibleZones(
@@ -108,7 +109,7 @@ public final class FrostfireFogWallWorldRenderer
 
     private static void configureShader(ShaderInstance shader, RenderLevelStageEvent event, Camera camera, Vec3 cameraPos,
                                         List<FrostfireClientWeatherCache.WeatherZoneSnapshot> visibleZones,
-                                        float weatherIntensity, float wallTime)
+                                        float weatherIntensity, float wallTime, RenderTarget mainRenderTarget)
     {
         Camera.NearPlane nearPlane = camera.getNearPlane();
         Vec3 topLeft = nearPlane.getTopLeft();
@@ -119,6 +120,7 @@ public final class FrostfireFogWallWorldRenderer
         float wallTopOffset = Mth.lerp(weatherIntensity, WALL_TOP_OFFSET_CLEAR, WALL_TOP_OFFSET_STORM);
 
         shader.safeGetUniform("InverseProjMat").set(inverseProjection);
+        shader.safeGetUniform("TargetSize").set((float) mainRenderTarget.width, (float) mainRenderTarget.height);
         shader.safeGetUniform("CameraPos").set((float) cameraPos.x, (float) cameraPos.y, (float) cameraPos.z);
         shader.safeGetUniform("NearTopLeft").set((float) topLeft.x, (float) topLeft.y, (float) topLeft.z);
         shader.safeGetUniform("NearTopRight").set((float) topRight.x, (float) topRight.y, (float) topRight.z);
@@ -155,6 +157,7 @@ public final class FrostfireFogWallWorldRenderer
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
         RenderSystem.disableCull();
+        RenderSystem.viewport(0, 0, mainRenderTarget.viewWidth, mainRenderTarget.viewHeight);
         RenderSystem.backupProjectionMatrix();
         RenderSystem.setProjectionMatrix(new Matrix4f().identity(), com.mojang.blaze3d.vertex.VertexSorting.ORTHOGRAPHIC_Z);
 
