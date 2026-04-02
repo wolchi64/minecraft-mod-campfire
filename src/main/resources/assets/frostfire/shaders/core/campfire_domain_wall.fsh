@@ -30,6 +30,8 @@ out vec4 fragColor;
 
 const float SKY_DEPTH_THRESHOLD = 0.99999;
 const float EPSILON = 0.0001;
+const float VERTICAL_FADE = 32.0;
+const float VERTICAL_CLIP_MARGIN = 48.0;
 const int MAX_ZONES = 8;
 
 float hash(vec3 p) {
@@ -162,7 +164,12 @@ float bandSampleT(vec2 outerInterval, vec2 innerInterval, float innerRadius) {
 
 float zoneContribution(vec4 zone, vec3 rayDir, float tMax, float stormFactor) {
     vec3 localOrigin = CameraPos - zone.xyz;
-    vec2 verticalInterval = slabInterval(localOrigin, rayDir, WallBottomOffset, WallTopOffset, tMax);
+    vec2 verticalInterval = slabInterval(
+        localOrigin,
+        rayDir,
+        WallBottomOffset - VERTICAL_CLIP_MARGIN,
+        WallTopOffset + VERTICAL_CLIP_MARGIN,
+        tMax);
     if (intervalLength(verticalInterval) <= 0.0) {
         return 0.0;
     }
@@ -194,8 +201,11 @@ float zoneContribution(vec4 zone, vec3 rayDir, float tMax, float stormFactor) {
 
     float radialDistance = length(localSample.xz);
     float edgeFactor = 1.0 - smoothstep(0.0, WallHalfThickness, abs(radialDistance - zone.w));
-    float verticalFactor = smoothstep(WallBottomOffset, WallBottomOffset + 18.0, localSample.y)
-        * (1.0 - smoothstep(WallTopOffset - 26.0, WallTopOffset, localSample.y));
+    float verticalFactor = smoothstep(WallBottomOffset - VERTICAL_FADE, WallBottomOffset + VERTICAL_FADE, localSample.y)
+        * (1.0 - smoothstep(WallTopOffset - VERTICAL_FADE, WallTopOffset + VERTICAL_FADE, localSample.y));
+    if (verticalFactor <= 0.0001) {
+        return 0.0;
+    }
 
     vec3 bodySample = vec3(worldSample.x * 0.12, worldSample.y * 0.05, worldSample.z * 0.12)
         + vec3(Time * 0.12, -Time * 0.03, -Time * 0.08);
@@ -240,7 +250,8 @@ void main() {
     }
 
     if (tMax <= EPSILON) {
-        discard;
+        fragColor = vec4(0.0);
+        return;
     }
 
     float stormFactor = clamp(WeatherIntensity, 0.0, 1.0);
@@ -261,7 +272,8 @@ void main() {
     float alpha = 1.0 - exp(-totalDensity);
     alpha = clamp(alpha, 0.0, 0.82);
     if (alpha <= 0.002) {
-        discard;
+        fragColor = vec4(0.0);
+        return;
     }
 
     vec3 fogTint = mix(FogColor.rgb, vec3(0.92, 0.95, 1.0), 0.18);
