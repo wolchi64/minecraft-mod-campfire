@@ -2,6 +2,7 @@ package com.frozenhearth.frostfire.client;
 
 import com.frozenhearth.frostfire.FrostfireCampfireMod;
 import com.mojang.blaze3d.pipeline.RenderTarget;
+import com.mojang.blaze3d.pipeline.TextureTarget;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.BufferBuilder;
 import com.mojang.blaze3d.vertex.BufferUploader;
@@ -34,6 +35,7 @@ public final class FrostfireFogWallWorldRenderer
     private static final float WALL_BOTTOM_OFFSET = -34.0F;
     private static final float WALL_TOP_OFFSET_CLEAR = 82.0F;
     private static final float WALL_TOP_OFFSET_STORM = 96.0F;
+    private static TextureTarget depthSnapshotTarget;
 
     private FrostfireFogWallWorldRenderer() {}
 
@@ -76,7 +78,9 @@ public final class FrostfireFogWallWorldRenderer
         float wallTime = (minecraft.level.getGameTime() + event.getPartialTick()) * 0.05F;
         RenderTarget mainRenderTarget = minecraft.getMainRenderTarget();
         configureShader(shader, event, camera, cameraPos, visibleZones, weatherIntensity, wallTime, mainRenderTarget);
-        renderFogVolume(shader, mainRenderTarget);
+        RenderTarget depthRenderTarget = ensureDepthSnapshotTarget(mainRenderTarget);
+        depthRenderTarget.copyDepthFrom(mainRenderTarget);
+        renderFogVolume(shader, mainRenderTarget, depthRenderTarget);
     }
 
     private static List<FrostfireClientWeatherCache.WeatherZoneSnapshot> filterVisibleZones(
@@ -150,8 +154,9 @@ public final class FrostfireFogWallWorldRenderer
         }
     }
 
-    private static void renderFogVolume(ShaderInstance shader, RenderTarget mainRenderTarget)
+    private static void renderFogVolume(ShaderInstance shader, RenderTarget mainRenderTarget, RenderTarget depthRenderTarget)
     {
+        mainRenderTarget.bindWrite(false);
         RenderSystem.disableDepthTest();
         RenderSystem.depthMask(false);
         RenderSystem.enableBlend();
@@ -167,7 +172,7 @@ public final class FrostfireFogWallWorldRenderer
         RenderSystem.applyModelViewMatrix();
 
         RenderSystem.setShader(() -> shader);
-        RenderSystem.setShaderTexture(0, mainRenderTarget.getDepthTextureId());
+        RenderSystem.setShaderTexture(0, depthRenderTarget.getDepthTextureId());
 
         BufferBuilder bufferBuilder = Tesselator.getInstance().getBuilder();
         bufferBuilder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION);
@@ -184,5 +189,21 @@ public final class FrostfireFogWallWorldRenderer
         RenderSystem.disableBlend();
         RenderSystem.depthMask(true);
         RenderSystem.enableDepthTest();
+    }
+
+    private static RenderTarget ensureDepthSnapshotTarget(RenderTarget mainRenderTarget)
+    {
+        if (depthSnapshotTarget == null)
+        {
+            depthSnapshotTarget = new TextureTarget(mainRenderTarget.width, mainRenderTarget.height, true, Minecraft.ON_OSX);
+            return depthSnapshotTarget;
+        }
+
+        if (depthSnapshotTarget.width != mainRenderTarget.width || depthSnapshotTarget.height != mainRenderTarget.height)
+        {
+            depthSnapshotTarget.resize(mainRenderTarget.width, mainRenderTarget.height, Minecraft.ON_OSX);
+        }
+
+        return depthSnapshotTarget;
     }
 }
