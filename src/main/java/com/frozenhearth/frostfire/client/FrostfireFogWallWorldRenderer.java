@@ -33,8 +33,8 @@ public final class FrostfireFogWallWorldRenderer
     private static final int MAX_ZONES = FrostfireClientWeatherCache.MAX_RENDERED_WALLS;
     private static final float WALL_HALF_THICKNESS = 14.5F;
     private static final float WALL_BOTTOM_OFFSET = -34.0F;
-    private static final float WALL_TOP_OFFSET_CLEAR = 78.0F;
-    private static final float WALL_TOP_OFFSET_STORM = 94.0F;
+    private static final float WALL_TOP_OFFSET_CLEAR = 58.0F;
+    private static final float WALL_TOP_OFFSET_STORM = 74.0F;
     private static TextureTarget depthSnapshotTarget;
 
     private FrostfireFogWallWorldRenderer() {}
