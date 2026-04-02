@@ -30,8 +30,7 @@ out vec4 fragColor;
 
 const float SKY_DEPTH_THRESHOLD = 0.99999;
 const float EPSILON = 0.0001;
-const float VERTICAL_FADE = 32.0;
-const float VERTICAL_CLIP_MARGIN = 48.0;
+const float VERTICAL_FADE = 40.0;
 const float MIN_VISIBLE_BAND = 1.35;
 const float FULL_VISIBLE_BAND = 5.0;
 const float CLOSE_OCCLUDER_FADE_START = 6.0;
@@ -157,24 +156,6 @@ float stableDepthDistance(vec2 uv, out float occlusionFade) {
     return medianDistance;
 }
 
-vec2 slabInterval(vec3 origin, vec3 rayDir, float minY, float maxY, float tMax) {
-    if (abs(rayDir.y) < EPSILON) {
-        if (origin.y < minY || origin.y > maxY) {
-            return invalidInterval();
-        }
-        return vec2(0.0, tMax);
-    }
-
-    float t0 = (minY - origin.y) / rayDir.y;
-    float t1 = (maxY - origin.y) / rayDir.y;
-    if (t0 > t1) {
-        float swap = t0;
-        t0 = t1;
-        t1 = swap;
-    }
-    return clampInterval(vec2(t0, t1), tMax);
-}
-
 vec2 cylinderInterval(vec3 origin, vec3 rayDir, float radius, float tMax) {
     float a = dot(rayDir.xz, rayDir.xz);
     float c = dot(origin.xz, origin.xz) - (radius * radius);
@@ -226,20 +207,10 @@ float bandSampleT(vec2 outerInterval, vec2 innerInterval, float innerRadius) {
 
 float zoneContribution(vec4 zone, vec3 rayDir, float tMax, float stormFactor) {
     vec3 localOrigin = CameraPos - zone.xyz;
-    vec2 verticalInterval = slabInterval(
-        localOrigin,
-        rayDir,
-        WallBottomOffset - VERTICAL_CLIP_MARGIN,
-        WallTopOffset + VERTICAL_CLIP_MARGIN,
-        tMax);
-    if (intervalLength(verticalInterval) <= 0.0) {
-        return 0.0;
-    }
-
     float outerRadius = zone.w + WallHalfThickness;
     float innerRadius = max(zone.w - WallHalfThickness, 0.0);
 
-    vec2 outerInterval = intersectIntervals(cylinderInterval(localOrigin, rayDir, outerRadius, tMax), verticalInterval);
+    vec2 outerInterval = cylinderInterval(localOrigin, rayDir, outerRadius, tMax);
     float outerLength = intervalLength(outerInterval);
     if (outerLength <= 0.0) {
         return 0.0;
@@ -248,7 +219,7 @@ float zoneContribution(vec4 zone, vec3 rayDir, float tMax, float stormFactor) {
     vec2 innerInterval = invalidInterval();
     float innerLength = 0.0;
     if (innerRadius > EPSILON) {
-        innerInterval = intersectIntervals(cylinderInterval(localOrigin, rayDir, innerRadius, tMax), verticalInterval);
+        innerInterval = cylinderInterval(localOrigin, rayDir, innerRadius, tMax);
         innerLength = intervalLength(innerInterval);
     }
 
@@ -267,8 +238,8 @@ float zoneContribution(vec4 zone, vec3 rayDir, float tMax, float stormFactor) {
 
     float radialDistance = length(localSample.xz);
     float edgeFactor = 1.0 - smoothstep(0.0, WallHalfThickness, abs(radialDistance - zone.w));
-    float verticalFactor = smoothstep(WallBottomOffset - VERTICAL_FADE, WallBottomOffset + VERTICAL_FADE, localSample.y)
-        * (1.0 - smoothstep(WallTopOffset - VERTICAL_FADE, WallTopOffset + VERTICAL_FADE, localSample.y));
+    float verticalFactor = smoothstep(WallBottomOffset - (VERTICAL_FADE * 1.5), WallBottomOffset + VERTICAL_FADE, localSample.y)
+        * (1.0 - smoothstep(WallTopOffset - VERTICAL_FADE, WallTopOffset + (VERTICAL_FADE * 1.5), localSample.y));
     if (verticalFactor <= 0.0001) {
         return 0.0;
     }
