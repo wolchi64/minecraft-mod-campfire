@@ -68,7 +68,7 @@ public final class FrostfireFogWallWorldRenderer
             return;
         }
 
-        List<FrostfireClientWeatherCache.WeatherZoneSnapshot> visibleZones = filterVisibleZones(zones, event.getFrustum());
+        List<FrostfireClientWeatherCache.WeatherZoneSnapshot> visibleZones = filterVisibleZones(zones, cameraPos, event.getFrustum());
         if (visibleZones.isEmpty())
         {
             return;
@@ -84,16 +84,22 @@ public final class FrostfireFogWallWorldRenderer
     }
 
     private static List<FrostfireClientWeatherCache.WeatherZoneSnapshot> filterVisibleZones(
-            List<FrostfireClientWeatherCache.WeatherZoneSnapshot> zones, Frustum frustum)
+            List<FrostfireClientWeatherCache.WeatherZoneSnapshot> zones, Vec3 cameraPos, Frustum frustum)
     {
-        if (frustum == null)
-        {
-            return zones;
-        }
-
         List<FrostfireClientWeatherCache.WeatherZoneSnapshot> visible = new ArrayList<>(zones.size());
         for (FrostfireClientWeatherCache.WeatherZoneSnapshot zone : zones)
         {
+            if (!isCameraInsideZone(zone, cameraPos))
+            {
+                continue;
+            }
+
+            if (frustum == null)
+            {
+                visible.add(zone);
+                continue;
+            }
+
             double outerRadius = zone.radius() + WALL_HALF_THICKNESS;
             Vec3 center = zone.center();
             AABB bounds = new AABB(
@@ -109,6 +115,13 @@ public final class FrostfireFogWallWorldRenderer
             }
         }
         return visible;
+    }
+
+    private static boolean isCameraInsideZone(FrostfireClientWeatherCache.WeatherZoneSnapshot zone, Vec3 cameraPos)
+    {
+        double dx = cameraPos.x - zone.center().x;
+        double dz = cameraPos.z - zone.center().z;
+        return (dx * dx) + (dz * dz) < (zone.radius() * zone.radius());
     }
 
     private static void configureShader(ShaderInstance shader, RenderLevelStageEvent event, Camera camera, Vec3 cameraPos,

@@ -209,7 +209,7 @@ float bandSampleT(vec2 outerInterval, vec2 innerInterval, float innerRadius) {
 float zoneContribution(vec4 zone, vec3 rayDir, float tMax, float stormFactor) {
     vec3 localOrigin = CameraPos - zone.xyz;
     float outerRadius = zone.w + WallHalfThickness;
-    float innerRadius = max(zone.w - WallHalfThickness, 0.0);
+    float innerRadius = max(zone.w, 0.0);
 
     vec2 outerInterval = cylinderInterval(localOrigin, rayDir, outerRadius, tMax);
     float outerLength = intervalLength(outerInterval);
@@ -306,6 +306,5 @@ void main() {
         return;
     }
 
-    vec3 fogTint = mix(FogColor.rgb, vec3(0.92, 0.95, 1.0), 0.18);
-    fragColor = vec4(fogTint, alpha);
+    fragColor = vec4(vec3(1.0), alpha);
 }
