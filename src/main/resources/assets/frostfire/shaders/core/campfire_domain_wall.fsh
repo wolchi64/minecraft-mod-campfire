@@ -49,10 +49,10 @@ void main() {
     }
 
     float stormFactor = clamp(WeatherIntensity, 0.0, 1.0);
-    float driftSpeed = mix(0.16, 0.09, stormFactor);
-    float swirlSpeed = mix(0.26, 0.16, stormFactor);
-    float largeScale = mix(0.14, 0.10, stormFactor);
-    float detailScale = mix(0.34, 0.26, stormFactor);
+    float driftSpeed = mix(0.14, 0.08, stormFactor);
+    float swirlSpeed = mix(0.22, 0.14, stormFactor);
+    float largeScale = mix(0.12, 0.09, stormFactor);
+    float detailScale = mix(0.28, 0.22, stormFactor);
 
     vec3 bodySample = vec3(worldPos.x * largeScale, worldPos.y * 0.050, worldPos.z * largeScale)
         + vec3(Time * driftSpeed, -Time * driftSpeed * 0.20, -Time * driftSpeed * 0.34);
@@ -68,28 +68,28 @@ void main() {
     float detailNoise = fbm(detailSample);
     float erosionNoise = fbm(erosionSample);
 
-    float body = smoothstep(0.18, 0.88, mix(bodyNoise, crossNoise, 0.42));
-    float wisps = smoothstep(0.16, 0.80, detailNoise);
-    float pockets = 1.0 - smoothstep(mix(0.62, 0.68, stormFactor), mix(0.88, 0.93, stormFactor),
-        erosionNoise + (0.12 * (1.0 - body)));
-    float verticalPulse = 0.86 + (0.14 * smoothstep(0.18, 0.84,
+    float body = smoothstep(0.20, 0.84, mix(bodyNoise, crossNoise, 0.42));
+    float wisps = smoothstep(0.22, 0.76, detailNoise);
+    float pockets = 1.0 - smoothstep(mix(0.66, 0.72, stormFactor), mix(0.88, 0.94, stormFactor),
+        erosionNoise + (0.10 * (1.0 - body)));
+    float verticalPulse = 0.90 + (0.10 * smoothstep(0.18, 0.84,
         fbm(vec3(worldPos.x * 0.08, worldPos.y * 0.025, worldPos.z * 0.08) + vec3(Time * 0.05, -Time * 0.02, 0.0))));
 
-    float density = mix(0.74, 0.92, stormFactor);
+    float density = mix(0.58, 0.76, stormFactor);
     float alpha = vertexColor.a * density;
-    alpha *= mix(0.84, 1.20, body);
-    alpha *= mix(0.88, 1.08, wisps);
-    alpha *= mix(0.56, 1.0, pockets);
-    alpha *= mix(0.96, 1.08, crossNoise);
+    alpha *= mix(0.90, 1.12, body);
+    alpha *= mix(0.92, 1.04, wisps);
+    alpha *= mix(0.62, 1.0, pockets);
+    alpha *= mix(0.97, 1.05, crossNoise);
     alpha *= verticalPulse;
 
-    if (alpha <= 0.006) {
+    if (alpha <= 0.0025) {
         discard;
     }
 
     vec3 color = vertexColor.rgb;
     float tintNoise = mix(bodyNoise, detailNoise, 0.35);
-    color *= mix(0.95, 1.02, tintNoise);
+    color *= mix(0.96, 1.015, tintNoise);
     color *= mix(vec3(0.96, 0.98, 1.0), vec3(1.0), stormFactor * 0.35);
 
     fragColor = vec4(color, clamp(alpha, 0.0, 1.0)) * ColorModulator;
