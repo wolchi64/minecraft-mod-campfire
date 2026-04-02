@@ -26,7 +26,7 @@ public final class FrostfireFogWallShaderRegistry
         ResourceProvider resourceProvider = event.getResourceProvider();
         ShaderInstance shader = new ShaderInstance(resourceProvider,
                 new ResourceLocation(FrostfireCampfireMod.MOD_ID, "campfire_domain_wall"),
-                DefaultVertexFormat.POSITION_COLOR);
+                DefaultVertexFormat.POSITION);
         event.registerShader(shader, loadedShader -> campfireDomainWallShader = loadedShader);
     }
 
