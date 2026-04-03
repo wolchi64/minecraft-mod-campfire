@@ -46,6 +46,7 @@ const float WALL_INNER_FADE = 3.5;
 const float WALL_OUTER_FADE = 3.0;
 const float RADIAL_WARP_STRENGTH = 2.8;
 const float SYSTEM_BRIDGE_FADE = 7.0;
+const float SYSTEM_ROUNDING_RADIUS = 5.5;
 const float OUTSIDE_VIEWER_DENSITY_BOOST = 1.72;
 const float OUTSIDE_VIEWER_OCCLUSION_RELAX = 0.7;
 const int BAND_SAMPLE_COUNT = 3;
@@ -53,6 +54,7 @@ const int MAX_ZONES = 8;
 
 float fogBoundaryGap();
 float fogBandWidth();
+float boundaryRadius(vec4 zone);
 
 float hash(vec3 p) {
     return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453123);
@@ -214,8 +216,9 @@ vec2 cylinderInterval(vec3 origin, vec3 rayDir, float radius, float tMax) {
 
 float systemBridgeFactor(int currentZoneIndex, vec4 currentZone, vec3 worldSample) {
     float currentDistance = length((worldSample - currentZone.xyz).xz);
-    float currentBoundary = max(currentZone.w - fogBoundaryGap(), 0.0);
-    float currentNearBoundary = 1.0 - smoothstep(0.0, SYSTEM_BRIDGE_FADE, abs(currentDistance - currentBoundary));
+    float currentBoundary = boundaryRadius(currentZone);
+    float currentBoundaryDelta = abs(currentDistance - currentBoundary);
+    float currentNearBoundary = 1.0 - smoothstep(0.0, SYSTEM_BRIDGE_FADE, currentBoundaryDelta);
     if (currentNearBoundary <= 0.0001) {
         return 0.0;
     }
@@ -241,10 +244,14 @@ float systemBridgeFactor(int currentZoneIndex, vec4 currentZone, vec3 worldSampl
         }
 
         float otherDistance = length((worldSample - otherZone.xyz).xz);
-        float otherBoundary = max(otherZone.w - fogBoundaryGap(), 0.0);
-        float otherNearBoundary = 1.0 - smoothstep(0.0, SYSTEM_BRIDGE_FADE, abs(otherDistance - otherBoundary));
+        float otherBoundary = boundaryRadius(otherZone);
+        float otherBoundaryDelta = abs(otherDistance - otherBoundary);
+        float otherNearBoundary = 1.0 - smoothstep(0.0, SYSTEM_BRIDGE_FADE, otherBoundaryDelta);
         float linkedFactor = smoothstep(0.0, SYSTEM_BRIDGE_FADE * 1.5, overlapDepth);
-        bridgeFactor = max(bridgeFactor, currentNearBoundary * otherNearBoundary * linkedFactor);
+        float roundedSeam = 1.0 - smoothstep(0.0, SYSTEM_ROUNDING_RADIUS,
+            length(vec2(currentBoundaryDelta, otherBoundaryDelta)));
+        float bridgePresence = max(currentNearBoundary * otherNearBoundary, roundedSeam);
+        bridgeFactor = max(bridgeFactor, bridgePresence * linkedFactor);
     }
 
     return bridgeFactor;
@@ -267,8 +274,10 @@ float overlapCutFactor(int currentZoneIndex, vec4 currentZone, vec3 worldSample)
         }
 
         float otherDistance = length((worldSample - otherZone.xyz).xz);
-        float insideOtherZone = 1.0 - smoothstep(otherZone.w - OVERLAP_BLEND_DISTANCE, otherZone.w + OVERLAP_BLEND_DISTANCE, otherDistance);
-        float cutStrength = mix(1.0, 0.35, bridgeFactor);
+        float otherBoundary = boundaryRadius(otherZone);
+        float insideOtherZone = 1.0 - smoothstep(otherBoundary - OVERLAP_BLEND_DISTANCE,
+            otherBoundary + (OVERLAP_BLEND_DISTANCE * 0.65), otherDistance);
+        float cutStrength = mix(1.0, 0.22, bridgeFactor);
         cutFactor *= (1.0 - (insideOtherZone * cutStrength));
         if (cutFactor <= 0.0001) {
             return 0.0;
@@ -312,6 +321,10 @@ float fogBoundaryGap() {
 
 float fogBandWidth() {
     return min(WallHalfThickness * 0.72, WALL_BAND_WIDTH_CAP);
+}
+
+float boundaryRadius(vec4 zone) {
+    return max(zone.w - fogBoundaryGap(), 0.0);
 }
 
 float radialFogProfile(float radialDistance, float zoneRadius, float radialWarp, float viewerOutsideFactor) {
