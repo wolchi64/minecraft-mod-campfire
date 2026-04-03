@@ -80,6 +80,7 @@ public final class FrostfireClientWeatherCache
 
         refreshZones(minecraft.level, focus);
         return ACTIVE_ZONES.stream()
+                .filter(WeatherZone::rendersFogWall)
                 .map(zone -> new WeatherZoneSnapshot(zone.center(), zone.radius()))
                 .sorted(Comparator.comparingDouble(zone -> zone.center().distanceToSqr(focus)))
                 .toList();
@@ -139,15 +140,20 @@ public final class FrostfireClientWeatherCache
                     if (blockEntity instanceof SurvivalCampfireBlockEntity campfire && campfire.isActive())
                     {
                         double clientRadius = Math.max(0.0D, campfire.getActiveRadius() - CLIENT_ZONE_RADIUS_INSET);
-                        ACTIVE_ZONES.add(new WeatherZone(Vec3.atCenterOf(blockEntity.getBlockPos()), clientRadius));
+                        ACTIVE_ZONES.add(new WeatherZone(Vec3.atCenterOf(blockEntity.getBlockPos()), clientRadius, campfire.getCurrentLevel()));
                     }
                 });
             }
         }
     }
 
-    private record WeatherZone(Vec3 center, double radius)
+    private record WeatherZone(Vec3 center, double radius, int level)
     {
+        private boolean rendersFogWall()
+        {
+            return level >= 3;
+        }
+
         private double distanceToCenter(double x, double z)
         {
             double dx = x - center.x;

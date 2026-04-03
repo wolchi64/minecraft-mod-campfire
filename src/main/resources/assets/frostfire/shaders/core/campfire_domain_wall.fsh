@@ -39,6 +39,7 @@ const float DEPTH_SOFTEN_SPREAD_NEAR = 1.5;
 const float DEPTH_SOFTEN_SPREAD_FAR = 8.0;
 const float DEPTH_SOFTEN_BLEND = 0.65;
 const float CAMERA_OUTSIDE_FADE_DISTANCE = 12.0;
+const float OVERLAP_BLEND_DISTANCE = 6.0;
 const int MAX_ZONES = 8;
 
 float hash(vec3 p) {
@@ -215,7 +216,32 @@ float bandSampleT(vec2 outerInterval, vec2 innerInterval, float innerRadius) {
     return mix(outerInterval.x, outerInterval.y, 0.5);
 }
 
-float zoneContribution(vec4 zone, vec3 rayDir, float tMax, float stormFactor) {
+float overlapCutFactor(int currentZoneIndex, vec3 worldSample) {
+    float cutFactor = 1.0;
+    for (int zoneIndex = 0; zoneIndex < MAX_ZONES; zoneIndex++) {
+        if (float(zoneIndex) >= ActiveZoneCount) {
+            break;
+        }
+        if (zoneIndex == currentZoneIndex) {
+            continue;
+        }
+
+        vec4 otherZone = getZone(zoneIndex);
+        if (otherZone.w <= 0.0) {
+            continue;
+        }
+
+        float otherDistance = length((worldSample - otherZone.xyz).xz);
+        float insideOtherZone = 1.0 - smoothstep(otherZone.w - OVERLAP_BLEND_DISTANCE, otherZone.w + OVERLAP_BLEND_DISTANCE, otherDistance);
+        cutFactor *= (1.0 - insideOtherZone);
+        if (cutFactor <= 0.0001) {
+            return 0.0;
+        }
+    }
+    return cutFactor;
+}
+
+float zoneContribution(int currentZoneIndex, vec4 zone, vec3 rayDir, float tMax, float stormFactor) {
     vec3 localOrigin = CameraPos - zone.xyz;
     float outerRadius = zone.w + WallHalfThickness;
     float innerRadius = max(zone.w, 0.0);
@@ -250,6 +276,10 @@ float zoneContribution(vec4 zone, vec3 rayDir, float tMax, float stormFactor) {
     float sampleT = bandSampleT(outerInterval, innerInterval, innerRadius);
     vec3 worldSample = CameraPos + (rayDir * sampleT);
     vec3 localSample = worldSample - zone.xyz;
+    float overlapCut = overlapCutFactor(currentZoneIndex, worldSample);
+    if (overlapCut <= 0.0001) {
+        return 0.0;
+    }
 
     float radialDistance = length(localSample.xz);
     float edgeFactor = 1.0 - smoothstep(0.0, WallHalfThickness, abs(radialDistance - zone.w));
@@ -279,6 +309,7 @@ float zoneContribution(vec4 zone, vec3 rayDir, float tMax, float stormFactor) {
     density *= edgeFactor;
     density *= verticalFactor;
     density *= cameraFade;
+    density *= overlapCut;
     return density;
 }
 
@@ -306,7 +337,7 @@ void main() {
             continue;
         }
 
-        totalDensity += zoneContribution(zone, rayDir, tMax, stormFactor);
+        totalDensity += zoneContribution(zoneIndex, zone, rayDir, tMax, stormFactor);
     }
 
     totalDensity *= occlusionFade * 1.15;
