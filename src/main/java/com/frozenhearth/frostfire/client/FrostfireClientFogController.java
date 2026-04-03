@@ -47,10 +47,11 @@ public final class FrostfireClientFogController
 
         float renderDistanceBlocks = minecraft.options.getEffectiveRenderDistance() * 16.0F;
         float targetFarDistance = Mth.clamp(renderDistanceBlocks * 8.0F, MIN_CLEAR_FAR_DISTANCE, MAX_CLEAR_FAR_DISTANCE);
-        float clearDistance = Mth.lerp(suppression.strength(), renderDistanceBlocks, targetFarDistance);
-        float nearDistance = mode == FogRenderer.FogMode.FOG_SKY
-                             ? 0.0F
-                             : Mth.lerp(suppression.strength(), 4.0F, -64.0F);
+        float baseFarDistance = event.getFarPlaneDistance();
+        float baseNearDistance = event.getNearPlaneDistance();
+        float targetNearDistance = mode == FogRenderer.FogMode.FOG_SKY ? 0.0F : -64.0F;
+        float clearDistance = Mth.lerp(suppression.strength(), baseFarDistance, targetFarDistance);
+        float nearDistance = Mth.lerp(suppression.strength(), baseNearDistance, targetNearDistance);
 
         event.setNearPlaneDistance(nearDistance);
         event.setFarPlaneDistance(clearDistance);
