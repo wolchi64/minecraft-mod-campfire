@@ -19,7 +19,7 @@ public final class FrostfireClientFogController
 {
     private static final float MIN_CLEAR_FAR_DISTANCE = 512.0F;
     private static final float MAX_CLEAR_FAR_DISTANCE = 8192.0F;
-    private static final float VISUAL_SUPPRESSION_RATE = 3.5F;
+    private static final float VISUAL_SUPPRESSION_RATE = 1.2F;
 
     private static long lastVisualUpdateMillis = -1L;
     private static float visualSuppressionStrength = 0.0F;
@@ -103,7 +103,7 @@ public final class FrostfireClientFogController
         long now = Util.getMillis();
         if (lastVisualUpdateMillis < 0L)
         {
-            visualSuppressionStrength = rawSuppression.strength();
+            visualSuppressionStrength = 0.0F;
         }
         else
         {
@@ -113,7 +113,9 @@ public final class FrostfireClientFogController
         }
         lastVisualUpdateMillis = now;
 
-        if (visualSuppressionStrength <= 0.0F)
+        float visualBlend = (float) Mth.smoothstep(visualSuppressionStrength);
+
+        if (visualBlend <= 0.0F)
         {
             if (rawSuppression.strength() <= 0.0F)
             {
@@ -123,7 +125,7 @@ public final class FrostfireClientFogController
         }
 
         return new FrostfireClientWeatherCache.WeatherSuppressionSample(
-                visualSuppressionStrength,
+                visualBlend,
                 rawSuppression.insideDistance(),
                 visualZoneCenter,
                 visualZoneRadius);
