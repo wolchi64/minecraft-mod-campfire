@@ -48,6 +48,11 @@ public final class FrostfireFogWallWorldRenderer
             return;
         }
 
+        if (!FrostfireCampfireMod.isPrimalWinterLoaded())
+        {
+            return;
+        }
+
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.level == null || minecraft.player == null)
         {

@@ -1,5 +1,6 @@
 package com.frozenhearth.frostfire.client;
 
+import com.frozenhearth.frostfire.FrostfireCampfireMod;
 import com.frozenhearth.frostfire.blockentity.SurvivalCampfireBlockEntity;
 import com.frozenhearth.frostfire.config.FrostfireConfig;
 import net.minecraft.client.Minecraft;
@@ -70,6 +71,11 @@ public final class FrostfireClientWeatherCache
 
     public static List<WeatherZoneSnapshot> getActiveZones(Vec3 focus)
     {
+        if (!FrostfireCampfireMod.isPrimalWinterLoaded())
+        {
+            return List.of();
+        }
+
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.level == null || minecraft.player == null)
         {

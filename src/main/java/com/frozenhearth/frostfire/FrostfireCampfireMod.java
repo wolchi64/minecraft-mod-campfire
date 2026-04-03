@@ -18,6 +18,7 @@ import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 public class FrostfireCampfireMod
 {
     public static final String MOD_ID = "frostfire";
+    public static final String PRIMAL_WINTER_MOD_ID = "primalwinter";
 
     public FrostfireCampfireMod(FMLJavaModLoadingContext context)
     {
@@ -34,6 +35,11 @@ public class FrostfireCampfireMod
         {
             MinecraftForge.EVENT_BUS.register(new ColdSweatCompat());
         }
+    }
+
+    public static boolean isPrimalWinterLoaded()
+    {
+        return ModList.get().isLoaded(PRIMAL_WINTER_MOD_ID);
     }
 
     private void commonSetup(FMLCommonSetupEvent event)
