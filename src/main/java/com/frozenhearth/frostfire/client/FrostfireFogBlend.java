@@ -2,7 +2,7 @@ package com.frozenhearth.frostfire.client;
 
 final class FrostfireFogBlend
 {
-    static final float FULL_VISUAL_CLEAR_DISTANCE = 8.0F;
+    static final float FULL_VISUAL_CLEAR_DISTANCE = 16.0F;
     static final float CLEAR_TERRAIN_NEAR_DISTANCE = -16.0F;
 
     private FrostfireFogBlend() {}

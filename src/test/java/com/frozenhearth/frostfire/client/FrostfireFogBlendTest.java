@@ -19,24 +19,24 @@ class FrostfireFogBlendTest
     {
         float blend = FrostfireFogBlend.computeVisualBlend(0.25D);
         assertTrue(blend > 0.0F, "Expected a visible fade immediately inside the safe zone");
-        assertTrue(blend < 0.1F, "Expected the first step inside the safe zone to stay subtle");
+        assertTrue(blend < 0.05F, "Expected the first step inside the safe zone to stay subtle");
     }
 
     @Test
     void increasesMonotonicallyWithDistance()
     {
         float nearEdge = FrostfireFogBlend.computeVisualBlend(1.0D);
-        float midZone = FrostfireFogBlend.computeVisualBlend(4.0D);
-        float deepInside = FrostfireFogBlend.computeVisualBlend(7.0D);
+        float midZone = FrostfireFogBlend.computeVisualBlend(8.0D);
+        float deepInside = FrostfireFogBlend.computeVisualBlend(15.0D);
 
         assertTrue(nearEdge < midZone, "Expected the blend to keep increasing inside the zone");
         assertTrue(midZone < deepInside, "Expected the blend to keep increasing toward full clarity");
     }
 
     @Test
-    void reachesFullClearAtEightBlocksInside()
+    void reachesFullClearAtSixteenBlocksInside()
     {
-        assertEquals(1.0F, FrostfireFogBlend.computeVisualBlend(8.0D));
         assertEquals(1.0F, FrostfireFogBlend.computeVisualBlend(16.0D));
+        assertEquals(1.0F, FrostfireFogBlend.computeVisualBlend(24.0D));
     }
 }
