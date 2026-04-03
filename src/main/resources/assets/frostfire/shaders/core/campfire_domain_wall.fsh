@@ -39,9 +39,12 @@ const float DEPTH_SOFTEN_SPREAD_NEAR = 1.5;
 const float DEPTH_SOFTEN_SPREAD_FAR = 8.0;
 const float DEPTH_SOFTEN_BLEND = 0.65;
 const float OVERLAP_BLEND_DISTANCE = 6.0;
-const float OUTSIDE_VIEWER_DENSITY_BOOST = 2.2;
+const float EDGE_FEATHER_EXTRA = 7.5;
+const float OUTSIDE_VIEWER_DENSITY_BOOST = 2.35;
 const float OUTSIDE_VIEWER_OCCLUSION_RELAX = 0.7;
 const float OUTSIDE_VIEWER_MIN_ALPHA = 0.86;
+const float OUTSIDE_VIEWER_ALPHA_RAMP_START = 0.55;
+const float OUTSIDE_VIEWER_ALPHA_RAMP_END = 1.8;
 const int MAX_ZONES = 8;
 
 float hash(vec3 p) {
@@ -246,6 +249,13 @@ bool cameraInsideAnyZone() {
     return false;
 }
 
+vec3 wallTintColor() {
+    float fogLuminance = dot(FogColor.rgb, vec3(0.2126, 0.7152, 0.0722));
+    float daylightFactor = smoothstep(0.50, 0.78, fogLuminance);
+    vec3 daylightTint = vec3(0.91, 0.915, 0.94);
+    return mix(FogColor.rgb, daylightTint, daylightFactor * 0.72);
+}
+
 float bandSegmentContribution(int currentZoneIndex, vec4 zone, vec3 rayDir, vec2 bandInterval, float stormFactor) {
     float bandLength = intervalLength(bandInterval);
     if (bandLength <= 0.0) {
@@ -266,7 +276,8 @@ float bandSegmentContribution(int currentZoneIndex, vec4 zone, vec3 rayDir, vec2
     }
 
     float radialDistance = length(localSample.xz);
-    float edgeFactor = 1.0 - smoothstep(0.0, WallHalfThickness, abs(radialDistance - zone.w));
+    float edgeDistance = abs(radialDistance - zone.w);
+    float edgeFactor = 1.0 - smoothstep(0.0, WallHalfThickness + EDGE_FEATHER_EXTRA, edgeDistance);
     float verticalFactor = smoothstep(WallBottomOffset - (VERTICAL_FADE * 1.5), WallBottomOffset + VERTICAL_FADE, localSample.y)
         * (1.0 - smoothstep(WallTopOffset - VERTICAL_FADE, WallTopOffset + (VERTICAL_FADE * 1.5), localSample.y));
     if (verticalFactor <= 0.0001) {
@@ -357,7 +368,8 @@ void main() {
     totalDensity *= adjustedOcclusionFade * mix(1.15, OUTSIDE_VIEWER_DENSITY_BOOST, viewerOutsideFactor);
     float alpha = 1.0 - exp(-totalDensity);
     if (viewerOutsideFactor > 0.5 && alpha > 0.002) {
-        alpha = max(alpha, OUTSIDE_VIEWER_MIN_ALPHA);
+        float outsideAlphaPresence = smoothstep(OUTSIDE_VIEWER_ALPHA_RAMP_START, OUTSIDE_VIEWER_ALPHA_RAMP_END, totalDensity);
+        alpha = max(alpha, OUTSIDE_VIEWER_MIN_ALPHA * outsideAlphaPresence);
     }
     alpha = clamp(alpha, 0.0, 0.995);
     if (alpha <= 0.002) {
@@ -365,5 +377,5 @@ void main() {
         return;
     }
 
-    fragColor = vec4(FogColor.rgb, alpha);
+    fragColor = vec4(wallTintColor(), alpha);
 }
