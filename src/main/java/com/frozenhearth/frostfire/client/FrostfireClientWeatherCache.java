@@ -18,8 +18,9 @@ public final class FrostfireClientWeatherCache
     public static final int MAX_RENDERED_WALLS = 8;
     private static final int ZONE_SEARCH_PADDING = 64;
     private static final int CACHE_REFRESH_INTERVAL = 10;
-    private static final double WEATHER_TRANSITION_BLOCKS = 6.0D;
+    private static final double WEATHER_TRANSITION_BLOCKS = 10.0D;
     private static final double CLIENT_ZONE_RADIUS_INSET = 2.0D;
+    private static final float FULL_WEATHER_SUPPRESSION_THRESHOLD = 0.92F;
 
     private static ClientLevel cachedLevel;
     private static long lastRefreshTick = Long.MIN_VALUE;
@@ -31,7 +32,7 @@ public final class FrostfireClientWeatherCache
 
     public static boolean isWeatherSuppressed(Vec3 weatherPos)
     {
-        return sampleWeatherSuppression(weatherPos).strength() > 0.0F;
+        return sampleWeatherSuppression(weatherPos).strength() >= FULL_WEATHER_SUPPRESSION_THRESHOLD;
     }
 
     public static WeatherSuppressionSample sampleWeatherSuppression(Vec3 weatherPos)
@@ -52,7 +53,8 @@ public final class FrostfireClientWeatherCache
         for (WeatherZone zone : ACTIVE_ZONES)
         {
             double edgeDistance = zone.edgeDistance(weatherPos.x, weatherPos.z);
-            float strength = Mth.clamp((float) (edgeDistance / WEATHER_TRANSITION_BLOCKS), 0.0F, 1.0F);
+            float normalizedStrength = Mth.clamp((float) (edgeDistance / WEATHER_TRANSITION_BLOCKS), 0.0F, 1.0F);
+            float strength = (float) Mth.smoothstep(normalizedStrength);
             if (strength > strongestStrength || (strength == strongestStrength && edgeDistance > deepestInsideDistance))
             {
                 strongestStrength = strength;
