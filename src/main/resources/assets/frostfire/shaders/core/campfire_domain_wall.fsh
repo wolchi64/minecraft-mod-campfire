@@ -45,8 +45,8 @@ const float WALL_BAND_WIDTH_CAP = 13.0;
 const float WALL_INNER_FADE = 3.5;
 const float WALL_OUTER_FADE = 3.0;
 const float RADIAL_WARP_STRENGTH = 2.8;
-const float SYSTEM_BRIDGE_FADE = 7.0;
-const float SYSTEM_ROUNDING_RADIUS = 5.5;
+const float SYSTEM_BRIDGE_FADE = 9.0;
+const float SYSTEM_ROUNDING_RADIUS = 8.0;
 const float OUTSIDE_VIEWER_DENSITY_BOOST = 1.72;
 const float OUTSIDE_VIEWER_OCCLUSION_RELAX = 0.7;
 const int BAND_SAMPLE_COUNT = 3;
@@ -250,7 +250,8 @@ float systemBridgeFactor(int currentZoneIndex, vec4 currentZone, vec3 worldSampl
         float linkedFactor = smoothstep(0.0, SYSTEM_BRIDGE_FADE * 1.5, overlapDepth);
         float roundedSeam = 1.0 - smoothstep(0.0, SYSTEM_ROUNDING_RADIUS,
             length(vec2(currentBoundaryDelta, otherBoundaryDelta)));
-        float bridgePresence = max(currentNearBoundary * otherNearBoundary, roundedSeam);
+        float edgePairPresence = currentNearBoundary * otherNearBoundary;
+        float bridgePresence = max((roundedSeam * 1.18), edgePairPresence * 0.78);
         bridgeFactor = max(bridgeFactor, bridgePresence * linkedFactor);
     }
 
@@ -277,7 +278,7 @@ float overlapCutFactor(int currentZoneIndex, vec4 currentZone, vec3 worldSample)
         float otherBoundary = boundaryRadius(otherZone);
         float insideOtherZone = 1.0 - smoothstep(otherBoundary - OVERLAP_BLEND_DISTANCE,
             otherBoundary + (OVERLAP_BLEND_DISTANCE * 0.65), otherDistance);
-        float cutStrength = mix(1.0, 0.22, bridgeFactor);
+        float cutStrength = mix(1.0, 0.12, bridgeFactor);
         cutFactor *= (1.0 - (insideOtherZone * cutStrength));
         if (cutFactor <= 0.0001) {
             return 0.0;
@@ -352,7 +353,7 @@ float bandSegmentContribution(int currentZoneIndex, vec4 zone, vec3 rayDir, vec2
         return 0.0;
     }
 
-    float densityPerBlock = mix(0.24, 0.39, stormFactor);
+    float densityPerBlock = mix(0.28, 0.43, stormFactor);
     float visibilityFactor = smoothstep(MIN_VISIBLE_BAND * 0.35, FULL_VISIBLE_BAND, bandLength);
     float stepLength = bandLength / float(BAND_SAMPLE_COUNT);
     float density = 0.0;
