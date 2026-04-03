@@ -24,6 +24,11 @@ public final class FrostfireClientFogController
     {
         FrostfireClientWeatherCache.WeatherSuppressionSample suppression =
                 FrostfireClientWeatherCache.sampleWeatherSuppression(event.getCamera().getPosition());
+        if (suppression.zoneLevel() < 3)
+        {
+            return;
+        }
+
         float visualBlend = FrostfireFogBlend.computeVisualBlend(suppression.insideDistance());
         if (visualBlend <= 0.0F)
         {
@@ -57,6 +62,11 @@ public final class FrostfireClientFogController
     {
         FrostfireClientWeatherCache.WeatherSuppressionSample suppression =
                 FrostfireClientWeatherCache.sampleWeatherSuppression(event.getCamera().getPosition());
+        if (suppression.zoneLevel() < 3)
+        {
+            return;
+        }
+
         float visualBlend = FrostfireFogBlend.computeVisualBlend(suppression.insideDistance());
         if (visualBlend <= 0.0F)
         {

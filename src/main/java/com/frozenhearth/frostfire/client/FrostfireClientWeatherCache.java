@@ -50,6 +50,7 @@ public final class FrostfireClientWeatherCache
         double deepestInsideDistance = 0.0D;
         Vec3 selectedCenter = Vec3.ZERO;
         double selectedRadius = 0.0D;
+        int selectedLevel = 0;
         for (WeatherZone zone : ACTIVE_ZONES)
         {
             double edgeDistance = zone.edgeDistance(weatherPos.x, weatherPos.z);
@@ -60,13 +61,14 @@ public final class FrostfireClientWeatherCache
                 deepestInsideDistance = edgeDistance;
                 selectedCenter = zone.center();
                 selectedRadius = zone.radius();
+                selectedLevel = zone.level();
             }
         }
         if (strongestStrength <= 0.0F)
         {
             return WeatherSuppressionSample.NONE;
         }
-        return new WeatherSuppressionSample(strongestStrength, deepestInsideDistance, selectedCenter, selectedRadius);
+        return new WeatherSuppressionSample(strongestStrength, deepestInsideDistance, selectedCenter, selectedRadius, selectedLevel);
     }
 
     public static List<WeatherZoneSnapshot> getActiveZones(Vec3 focus)
@@ -246,9 +248,9 @@ public final class FrostfireClientWeatherCache
         return firstZone.center().distanceToSqr(secondZone.center()) <= maxDistance * maxDistance;
     }
 
-    public record WeatherSuppressionSample(float strength, double insideDistance, Vec3 zoneCenter, double zoneRadius)
+    public record WeatherSuppressionSample(float strength, double insideDistance, Vec3 zoneCenter, double zoneRadius, int zoneLevel)
     {
-        private static final WeatherSuppressionSample NONE = new WeatherSuppressionSample(0.0F, 0.0D, Vec3.ZERO, 0.0D);
+        private static final WeatherSuppressionSample NONE = new WeatherSuppressionSample(0.0F, 0.0D, Vec3.ZERO, 0.0D, 0);
     }
 
     public record WeatherZoneSnapshot(Vec3 center, double radius) {}

@@ -227,11 +227,7 @@ public class CampfireFootprintBlock extends Block
         {
             return FULL_BLOCK;
         }
-        if (dxToMaster != 0 && dzToMaster != 0)
-        {
-            return createInwardQuadrant(dxToMaster > 0, dzToMaster > 0, 8.0D);
-        }
-        return Block.box(0, 0, 0, 16, 8, 16);
+        return createCompactUpperLayerShape(dxToMaster, dzToMaster);
     }
 
     private static VoxelShape getLargeShape(int layer, int dxToMaster, int dzToMaster, boolean center, int ring)
@@ -267,7 +263,8 @@ public class CampfireFootprintBlock extends Block
                 }
                 yield dxToMaster == 0 && dzToMaster != 0 ? HALF_DEPTH_BLOCK : FULL_BLOCK;
             }
-            case 2, 3 -> EMPTY;
+            case 2 -> createTopStairPairShape(dxToMaster, dzToMaster);
+            case 3 -> EMPTY;
             default -> EMPTY;
         };
     }
@@ -316,5 +313,61 @@ public class CampfireFootprintBlock extends Block
         return dxToMaster > 0
                ? Shapes.or(base, Block.box(8, 8, 0, 16, 16, 16))
                : Shapes.or(base, Block.box(0, 8, 0, 8, 16, 16));
+    }
+
+    private static VoxelShape createCompactUpperLayerShape(int dxToMaster, int dzToMaster)
+    {
+        if (dxToMaster != 0 && dzToMaster != 0)
+        {
+            return EMPTY;
+        }
+
+        if (dzToMaster != 0)
+        {
+            return FULL_BLOCK;
+        }
+
+        return dxToMaster > 0
+               ? createSideStair(true)
+               : createSideStair(false);
+    }
+
+    private static VoxelShape createSideStair(boolean upperHalfOnWestSide)
+    {
+        VoxelShape base = Block.box(0, 0, 0, 16, 8, 16);
+        return upperHalfOnWestSide
+               ? Shapes.or(base, Block.box(8, 8, 0, 16, 16, 16))
+               : Shapes.or(base, Block.box(0, 8, 0, 8, 16, 16));
+    }
+
+    private static VoxelShape createTopStairPairShape(int dxToMaster, int dzToMaster)
+    {
+        if (dzToMaster == 0)
+        {
+            return createCenteredBand(dxToMaster, 16.0D);
+        }
+        return createCenteredInsetTowardMiddle(dxToMaster, dzToMaster, 8.0D);
+    }
+
+    private static VoxelShape createCenteredBand(int dxToMaster, double height)
+    {
+        if (dxToMaster > 0)
+        {
+            return Block.box(8, 0, 0, 16, height, 16);
+        }
+        if (dxToMaster < 0)
+        {
+            return Block.box(0, 0, 0, 8, height, 16);
+        }
+        return Block.box(0, 0, 0, 16, height, 16);
+    }
+
+    private static VoxelShape createCenteredInsetTowardMiddle(int dxToMaster, int dzToMaster, double height)
+    {
+        double minX = dxToMaster > 0 ? 8.0D : 0.0D;
+        double maxX = dxToMaster < 0 ? 8.0D : 16.0D;
+        double minZ = dzToMaster > 0 ? 8.0D : 0.0D;
+        double maxZ = dzToMaster < 0 ? 8.0D : 16.0D;
+        return Block.box(minX, 0, minZ, maxX, height, maxZ);
     }
 }
