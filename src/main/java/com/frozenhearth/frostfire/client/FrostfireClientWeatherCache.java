@@ -19,6 +19,7 @@ public final class FrostfireClientWeatherCache
     private static final int ZONE_SEARCH_PADDING = 64;
     private static final int CACHE_REFRESH_INTERVAL = 10;
     private static final double WEATHER_TRANSITION_BLOCKS = 6.0D;
+    private static final double CLIENT_ZONE_RADIUS_INSET = 2.0D;
 
     private static ClientLevel cachedLevel;
     private static long lastRefreshTick = Long.MIN_VALUE;
@@ -137,7 +138,8 @@ public final class FrostfireClientWeatherCache
                 chunk.getBlockEntities().values().forEach(blockEntity -> {
                     if (blockEntity instanceof SurvivalCampfireBlockEntity campfire && campfire.isActive())
                     {
-                        ACTIVE_ZONES.add(new WeatherZone(Vec3.atCenterOf(blockEntity.getBlockPos()), campfire.getActiveRadius()));
+                        double clientRadius = Math.max(0.0D, campfire.getActiveRadius() - CLIENT_ZONE_RADIUS_INSET);
+                        ACTIVE_ZONES.add(new WeatherZone(Vec3.atCenterOf(blockEntity.getBlockPos()), clientRadius));
                     }
                 });
             }
