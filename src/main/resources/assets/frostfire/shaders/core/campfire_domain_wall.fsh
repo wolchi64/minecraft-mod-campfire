@@ -40,11 +40,11 @@ const float DEPTH_SOFTEN_SPREAD_FAR = 8.0;
 const float DEPTH_SOFTEN_BLEND = 0.65;
 const float OVERLAP_BLEND_DISTANCE = 6.0;
 const float EDGE_FEATHER_EXTRA = 7.5;
-const float OUTSIDE_VIEWER_DENSITY_BOOST = 1.9;
+const float WALL_SOFT_SKIRT = 11.0;
+const float RADIAL_WARP_STRENGTH = 5.75;
+const float OUTSIDE_VIEWER_DENSITY_BOOST = 1.72;
 const float OUTSIDE_VIEWER_OCCLUSION_RELAX = 0.7;
-const float OUTSIDE_VIEWER_MIN_ALPHA = 0.58;
-const float OUTSIDE_VIEWER_ALPHA_RAMP_START = 0.75;
-const float OUTSIDE_VIEWER_ALPHA_RAMP_END = 2.4;
+const int BAND_SAMPLE_COUNT = 3;
 const int MAX_ZONES = 8;
 
 float hash(vec3 p) {
@@ -251,66 +251,97 @@ bool cameraInsideAnyZone() {
 
 vec3 wallTintColor() {
     float fogLuminance = dot(FogColor.rgb, vec3(0.2126, 0.7152, 0.0722));
-    float daylightFactor = smoothstep(0.58, 0.82, fogLuminance);
-    vec3 daylightTint = vec3(0.86, 0.865, 0.88);
-    return mix(FogColor.rgb, daylightTint, daylightFactor * 0.52);
+    float daylightFactor = smoothstep(0.60, 0.86, fogLuminance);
+    vec3 daylightTint = vec3(0.81, 0.82, 0.84);
+    vec3 tintedColor = mix(FogColor.rgb, daylightTint, daylightFactor * 0.28);
+    float tintedLuminance = dot(tintedColor, vec3(0.2126, 0.7152, 0.0722));
+    float daylightClamp = min(1.0, 0.76 / max(tintedLuminance, EPSILON));
+    return mix(tintedColor, tintedColor * daylightClamp, daylightFactor);
 }
 
-float bandSegmentContribution(int currentZoneIndex, vec4 zone, vec3 rayDir, vec2 bandInterval, float stormFactor) {
+float radialFogProfile(float radialOffset, float viewerOutsideFactor) {
+    float absOffset = abs(radialOffset);
+    float softRadius = WallHalfThickness + EDGE_FEATHER_EXTRA;
+    float hazeRadius = softRadius + WALL_SOFT_SKIRT;
+    float influenceFade = 1.0 - smoothstep(WallHalfThickness * 0.55, hazeRadius, absOffset);
+    float core = exp(-pow(radialOffset / max(WallHalfThickness * 0.70, 1.0), 2.0));
+    float haze = exp(-pow(radialOffset / max(softRadius + (WALL_SOFT_SKIRT * 0.45), 1.0), 2.0));
+    float outsideSkirt = smoothstep(-WallHalfThickness * 0.20, hazeRadius, radialOffset);
+    float profile = (core * 0.72) + (haze * 0.34);
+    profile += haze * outsideSkirt * viewerOutsideFactor * 0.24;
+    return profile * influenceFade;
+}
+
+float bandSegmentContribution(int currentZoneIndex, vec4 zone, vec3 rayDir, vec2 bandInterval, float stormFactor,
+                              float viewerOutsideFactor) {
     float bandLength = intervalLength(bandInterval);
     if (bandLength <= 0.0) {
         return 0.0;
     }
 
-    float visibilityFactor = smoothstep(MIN_VISIBLE_BAND, FULL_VISIBLE_BAND, bandLength);
-    if (visibilityFactor <= 0.0001) {
-        return 0.0;
+    float densityPerBlock = mix(0.24, 0.39, stormFactor);
+    float visibilityFactor = smoothstep(MIN_VISIBLE_BAND * 0.35, FULL_VISIBLE_BAND, bandLength);
+    float stepLength = bandLength / float(BAND_SAMPLE_COUNT);
+    float density = 0.0;
+
+    for (int sampleIndex = 0; sampleIndex < BAND_SAMPLE_COUNT; sampleIndex++) {
+        float sampleLerp = (float(sampleIndex) + 0.5) / float(BAND_SAMPLE_COUNT);
+        float sampleT = mix(bandInterval.x, bandInterval.y, sampleLerp);
+        vec3 worldSample = CameraPos + (rayDir * sampleT);
+        vec3 localSample = worldSample - zone.xyz;
+        float overlapCut = overlapCutFactor(currentZoneIndex, worldSample);
+        if (overlapCut <= 0.0001) {
+            continue;
+        }
+
+        float verticalFactor = smoothstep(WallBottomOffset - (VERTICAL_FADE * 1.5), WallBottomOffset + VERTICAL_FADE, localSample.y)
+            * (1.0 - smoothstep(WallTopOffset - VERTICAL_FADE, WallTopOffset + (VERTICAL_FADE * 1.5), localSample.y));
+        if (verticalFactor <= 0.0001) {
+            continue;
+        }
+
+        vec3 bodySample = vec3(worldSample.x * 0.12, worldSample.y * 0.05, worldSample.z * 0.12)
+            + vec3(Time * 0.12, -Time * 0.03, -Time * 0.08);
+        vec3 detailSample = vec3(worldSample.z * 0.24, worldSample.y * 0.10, worldSample.x * 0.24)
+            + vec3(-Time * 0.18, Time * 0.06, Time * 0.11);
+        vec3 erosionSample = vec3(worldSample.x * 0.18, worldSample.y * 0.08, worldSample.z * 0.18)
+            + vec3(Time * 0.07, -Time * 0.05, -Time * 0.09);
+
+        float bodyNoise = smoothstep(0.20, 0.84, fbm(bodySample));
+        float detailNoise = smoothstep(0.24, 0.76, fbm(detailSample));
+        float erosionNoise = 1.0 - smoothstep(mix(0.66, 0.72, stormFactor), mix(0.88, 0.94, stormFactor), fbm(erosionSample));
+
+        float radialDistance = length(localSample.xz);
+        float radialWarp = ((bodyNoise + detailNoise) - 1.0) * RADIAL_WARP_STRENGTH;
+        float radialOffset = (radialDistance - zone.w) + radialWarp;
+        float radialFactor = radialFogProfile(radialOffset, viewerOutsideFactor);
+        if (radialFactor <= 0.0001) {
+            continue;
+        }
+
+        float outsideDensityBias = mix(1.0, 1.26, viewerOutsideFactor
+            * smoothstep(-WallHalfThickness * 0.25, WallHalfThickness + WALL_SOFT_SKIRT, radialOffset));
+
+        float sampleDensity = stepLength * densityPerBlock;
+        sampleDensity *= mix(0.78, 1.18, bodyNoise);
+        sampleDensity *= mix(0.90, 1.08, detailNoise);
+        sampleDensity *= mix(0.90, 1.12, erosionNoise);
+        sampleDensity *= radialFactor;
+        sampleDensity *= verticalFactor;
+        sampleDensity *= overlapCut;
+        sampleDensity *= outsideDensityBias;
+        density += sampleDensity;
     }
 
-    float sampleT = mix(bandInterval.x, bandInterval.y, 0.5);
-    vec3 worldSample = CameraPos + (rayDir * sampleT);
-    vec3 localSample = worldSample - zone.xyz;
-    float overlapCut = overlapCutFactor(currentZoneIndex, worldSample);
-    if (overlapCut <= 0.0001) {
-        return 0.0;
-    }
-
-    float radialDistance = length(localSample.xz);
-    float edgeDistance = abs(radialDistance - zone.w);
-    float edgeFactor = 1.0 - smoothstep(0.0, WallHalfThickness + EDGE_FEATHER_EXTRA, edgeDistance);
-    float verticalFactor = smoothstep(WallBottomOffset - (VERTICAL_FADE * 1.5), WallBottomOffset + VERTICAL_FADE, localSample.y)
-        * (1.0 - smoothstep(WallTopOffset - VERTICAL_FADE, WallTopOffset + (VERTICAL_FADE * 1.5), localSample.y));
-    if (verticalFactor <= 0.0001) {
-        return 0.0;
-    }
-
-    vec3 bodySample = vec3(worldSample.x * 0.12, worldSample.y * 0.05, worldSample.z * 0.12)
-        + vec3(Time * 0.12, -Time * 0.03, -Time * 0.08);
-    vec3 detailSample = vec3(worldSample.z * 0.24, worldSample.y * 0.10, worldSample.x * 0.24)
-        + vec3(-Time * 0.18, Time * 0.06, Time * 0.11);
-    vec3 erosionSample = vec3(worldSample.x * 0.18, worldSample.y * 0.08, worldSample.z * 0.18)
-        + vec3(Time * 0.07, -Time * 0.05, -Time * 0.09);
-
-    float bodyNoise = smoothstep(0.20, 0.84, fbm(bodySample));
-    float detailNoise = smoothstep(0.24, 0.76, fbm(detailSample));
-    float erosionNoise = 1.0 - smoothstep(mix(0.66, 0.72, stormFactor), mix(0.88, 0.94, stormFactor), fbm(erosionSample));
-
-    float densityPerBlock = mix(0.28, 0.44, stormFactor);
-    float density = bandLength * densityPerBlock;
-    density *= mix(0.78, 1.18, bodyNoise);
-    density *= mix(0.90, 1.08, detailNoise);
-    density *= mix(0.90, 1.12, erosionNoise);
     density *= visibilityFactor;
-    density *= edgeFactor;
-    density *= verticalFactor;
-    density *= overlapCut;
     return density;
 }
 
-float zoneContribution(int currentZoneIndex, vec4 zone, vec3 rayDir, float tMax, float stormFactor) {
+float zoneContribution(int currentZoneIndex, vec4 zone, vec3 rayDir, float tMax, float stormFactor, float viewerOutsideFactor) {
     vec3 localOrigin = CameraPos - zone.xyz;
-    float outerRadius = zone.w + WallHalfThickness;
-    float innerRadius = max(zone.w - WallHalfThickness, 0.0);
+    float influenceRadius = WallHalfThickness + WALL_SOFT_SKIRT;
+    float outerRadius = zone.w + influenceRadius;
+    float innerRadius = max(zone.w - influenceRadius, 0.0);
 
     vec2 outerInterval = cylinderInterval(localOrigin, rayDir, outerRadius, tMax);
     float outerLength = intervalLength(outerInterval);
@@ -319,19 +350,19 @@ float zoneContribution(int currentZoneIndex, vec4 zone, vec3 rayDir, float tMax,
     }
 
     if (innerRadius <= EPSILON) {
-        return bandSegmentContribution(currentZoneIndex, zone, rayDir, outerInterval, stormFactor);
+        return bandSegmentContribution(currentZoneIndex, zone, rayDir, outerInterval, stormFactor, viewerOutsideFactor);
     }
 
     vec2 innerInterval = cylinderInterval(localOrigin, rayDir, innerRadius, tMax);
     float innerLength = intervalLength(innerInterval);
     if (innerLength <= 0.0) {
-        return bandSegmentContribution(currentZoneIndex, zone, rayDir, outerInterval, stormFactor);
+        return bandSegmentContribution(currentZoneIndex, zone, rayDir, outerInterval, stormFactor, viewerOutsideFactor);
     }
 
     vec2 nearBand = clampInterval(vec2(outerInterval.x, innerInterval.x), tMax);
     vec2 farBand = clampInterval(vec2(innerInterval.y, outerInterval.y), tMax);
-    float density = bandSegmentContribution(currentZoneIndex, zone, rayDir, nearBand, stormFactor);
-    density += bandSegmentContribution(currentZoneIndex, zone, rayDir, farBand, stormFactor);
+    float density = bandSegmentContribution(currentZoneIndex, zone, rayDir, nearBand, stormFactor, viewerOutsideFactor);
+    density += bandSegmentContribution(currentZoneIndex, zone, rayDir, farBand, stormFactor, viewerOutsideFactor);
     return density;
 }
 
@@ -361,16 +392,12 @@ void main() {
             continue;
         }
 
-        totalDensity += zoneContribution(zoneIndex, zone, rayDir, tMax, stormFactor);
+        totalDensity += zoneContribution(zoneIndex, zone, rayDir, tMax, stormFactor, viewerOutsideFactor);
     }
 
     float adjustedOcclusionFade = mix(occlusionFade, 1.0, viewerOutsideFactor * OUTSIDE_VIEWER_OCCLUSION_RELAX);
     totalDensity *= adjustedOcclusionFade * mix(1.15, OUTSIDE_VIEWER_DENSITY_BOOST, viewerOutsideFactor);
     float alpha = 1.0 - exp(-totalDensity);
-    if (viewerOutsideFactor > 0.5 && alpha > 0.002) {
-        float outsideAlphaPresence = smoothstep(OUTSIDE_VIEWER_ALPHA_RAMP_START, OUTSIDE_VIEWER_ALPHA_RAMP_END, totalDensity);
-        alpha = max(alpha, OUTSIDE_VIEWER_MIN_ALPHA * outsideAlphaPresence);
-    }
     alpha = clamp(alpha, 0.0, 0.995);
     if (alpha <= 0.002) {
         fragColor = vec4(0.0);
