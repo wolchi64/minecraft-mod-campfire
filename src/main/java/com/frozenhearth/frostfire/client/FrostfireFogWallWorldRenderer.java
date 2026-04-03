@@ -22,6 +22,7 @@ import net.minecraftforge.client.event.RenderLevelStageEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.joml.Matrix4f;
+import org.joml.Vector3f;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -130,21 +131,18 @@ public final class FrostfireFogWallWorldRenderer
                                         List<FrostfireClientWeatherCache.WeatherZoneSnapshot> visibleZones,
                                         float weatherIntensity, float wallTime, RenderTarget mainRenderTarget)
     {
-        Camera.NearPlane nearPlane = camera.getNearPlane();
-        Vec3 topLeft = nearPlane.getTopLeft();
-        Vec3 topRight = nearPlane.getTopRight();
-        Vec3 bottomLeft = nearPlane.getBottomLeft();
-        Vec3 bottomRight = nearPlane.getBottomRight();
         Matrix4f inverseProjection = new Matrix4f(event.getProjectionMatrix()).invert();
+        Vector3f lookVector = camera.getLookVector();
+        Vector3f upVector = camera.getUpVector();
+        Vector3f leftVector = camera.getLeftVector();
         float wallTopOffset = Mth.lerp(weatherIntensity, WALL_TOP_OFFSET_CLEAR, WALL_TOP_OFFSET_STORM);
 
         shader.safeGetUniform("InverseProjMat").set(inverseProjection);
         shader.safeGetUniform("TargetSize").set((float) mainRenderTarget.width, (float) mainRenderTarget.height);
         shader.safeGetUniform("CameraPos").set((float) cameraPos.x, (float) cameraPos.y, (float) cameraPos.z);
-        shader.safeGetUniform("NearTopLeft").set((float) topLeft.x, (float) topLeft.y, (float) topLeft.z);
-        shader.safeGetUniform("NearTopRight").set((float) topRight.x, (float) topRight.y, (float) topRight.z);
-        shader.safeGetUniform("NearBottomLeft").set((float) bottomLeft.x, (float) bottomLeft.y, (float) bottomLeft.z);
-        shader.safeGetUniform("NearBottomRight").set((float) bottomRight.x, (float) bottomRight.y, (float) bottomRight.z);
+        shader.safeGetUniform("CameraLook").set(lookVector.x, lookVector.y, lookVector.z);
+        shader.safeGetUniform("CameraUp").set(upVector.x, upVector.y, upVector.z);
+        shader.safeGetUniform("CameraLeft").set(leftVector.x, leftVector.y, leftVector.z);
         shader.safeGetUniform("Time").set(wallTime);
         shader.safeGetUniform("WeatherIntensity").set(weatherIntensity);
         shader.safeGetUniform("WallHalfThickness").set(WALL_HALF_THICKNESS);

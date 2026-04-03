@@ -6,10 +6,9 @@ uniform vec2 TargetSize;
 uniform vec4 FogColor;
 uniform mat4 InverseProjMat;
 uniform vec3 CameraPos;
-uniform vec3 NearTopLeft;
-uniform vec3 NearTopRight;
-uniform vec3 NearBottomLeft;
-uniform vec3 NearBottomRight;
+uniform vec3 CameraLook;
+uniform vec3 CameraUp;
+uniform vec3 CameraLeft;
 uniform float Time;
 uniform float WeatherIntensity;
 uniform float WallHalfThickness;
@@ -158,6 +157,15 @@ float stableDepthDistance(vec2 uv, out float occlusionFade) {
     return softenedDistance;
 }
 
+vec3 worldRayDirection(vec2 uv) {
+    vec2 ndc = (uv * 2.0) - 1.0;
+    vec4 clipPoint = vec4(ndc, 1.0, 1.0);
+    vec4 viewPoint = InverseProjMat * clipPoint;
+    vec3 viewDir = normalize(viewPoint.xyz / max(viewPoint.w, EPSILON));
+    vec3 worldDir = (CameraLeft * -viewDir.x) + (CameraUp * viewDir.y) + (CameraLook * -viewDir.z);
+    return normalize(worldDir);
+}
+
 vec2 cylinderInterval(vec3 origin, vec3 rayDir, float radius, float tMax) {
     float a = dot(rayDir.xz, rayDir.xz);
     float c = dot(origin.xz, origin.xz) - (radius * radius);
@@ -276,11 +284,7 @@ float zoneContribution(vec4 zone, vec3 rayDir, float tMax, float stormFactor) {
 
 void main() {
     vec2 uv = clamp(TexCoord, vec2(0.0), vec2(1.0));
-    vec3 nearPoint = mix(
-        mix(NearBottomLeft, NearBottomRight, uv.x),
-        mix(NearTopLeft, NearTopRight, uv.x),
-        uv.y);
-    vec3 rayDir = normalize(nearPoint);
+    vec3 rayDir = worldRayDirection(uv);
 
     float occlusionFade;
     float tMax = stableDepthDistance(uv, occlusionFade);
