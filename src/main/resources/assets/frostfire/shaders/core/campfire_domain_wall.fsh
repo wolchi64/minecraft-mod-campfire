@@ -40,11 +40,11 @@ const float DEPTH_SOFTEN_SPREAD_FAR = 8.0;
 const float DEPTH_SOFTEN_BLEND = 0.65;
 const float OVERLAP_BLEND_DISTANCE = 6.0;
 const float EDGE_FEATHER_EXTRA = 7.5;
-const float OUTSIDE_VIEWER_DENSITY_BOOST = 2.35;
+const float OUTSIDE_VIEWER_DENSITY_BOOST = 1.9;
 const float OUTSIDE_VIEWER_OCCLUSION_RELAX = 0.7;
-const float OUTSIDE_VIEWER_MIN_ALPHA = 0.86;
-const float OUTSIDE_VIEWER_ALPHA_RAMP_START = 0.55;
-const float OUTSIDE_VIEWER_ALPHA_RAMP_END = 1.8;
+const float OUTSIDE_VIEWER_MIN_ALPHA = 0.58;
+const float OUTSIDE_VIEWER_ALPHA_RAMP_START = 0.75;
+const float OUTSIDE_VIEWER_ALPHA_RAMP_END = 2.4;
 const int MAX_ZONES = 8;
 
 float hash(vec3 p) {
@@ -251,9 +251,9 @@ bool cameraInsideAnyZone() {
 
 vec3 wallTintColor() {
     float fogLuminance = dot(FogColor.rgb, vec3(0.2126, 0.7152, 0.0722));
-    float daylightFactor = smoothstep(0.50, 0.78, fogLuminance);
-    vec3 daylightTint = vec3(0.91, 0.915, 0.94);
-    return mix(FogColor.rgb, daylightTint, daylightFactor * 0.72);
+    float daylightFactor = smoothstep(0.58, 0.82, fogLuminance);
+    vec3 daylightTint = vec3(0.86, 0.865, 0.88);
+    return mix(FogColor.rgb, daylightTint, daylightFactor * 0.52);
 }
 
 float bandSegmentContribution(int currentZoneIndex, vec4 zone, vec3 rayDir, vec2 bandInterval, float stormFactor) {
@@ -310,7 +310,7 @@ float bandSegmentContribution(int currentZoneIndex, vec4 zone, vec3 rayDir, vec2
 float zoneContribution(int currentZoneIndex, vec4 zone, vec3 rayDir, float tMax, float stormFactor) {
     vec3 localOrigin = CameraPos - zone.xyz;
     float outerRadius = zone.w + WallHalfThickness;
-    float innerRadius = max(zone.w, 0.0);
+    float innerRadius = max(zone.w - WallHalfThickness, 0.0);
 
     vec2 outerInterval = cylinderInterval(localOrigin, rayDir, outerRadius, tMax);
     float outerLength = intervalLength(outerInterval);
