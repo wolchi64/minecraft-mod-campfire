@@ -135,7 +135,6 @@ dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
     compileOnly fg.deobf("blank:ColdSweat:2.3.13")
     runtimeOnly fg.deobf("blank:ColdSweat:2.3.13")
-    runtimeOnly fg.deobf("blank:primalwinter-forge-1.20:5.0.0")
 
     // Example mod dependency with JEI - using fg.deobf() ensures the dependency is remapped to your development mappings
     // The JEI API is declared for compile time use, while the full JEI artifact is used at runtime
