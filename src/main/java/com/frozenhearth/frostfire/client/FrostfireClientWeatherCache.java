@@ -32,7 +32,8 @@ public final class FrostfireClientWeatherCache
 
     public static boolean isWeatherSuppressed(Vec3 weatherPos)
     {
-        return false;
+        WeatherSuppressionSample sample = sampleWeatherSuppression(weatherPos);
+        return sample.zoneLevel() >= 3 && sample.insideDistance() > 0.0D;
     }
 
     public static WeatherSuppressionSample sampleWeatherSuppression(Vec3 weatherPos)
