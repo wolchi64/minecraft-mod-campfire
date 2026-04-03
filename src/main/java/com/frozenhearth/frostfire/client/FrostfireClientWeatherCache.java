@@ -93,6 +93,68 @@ public final class FrostfireClientWeatherCache
                 .toList();
     }
 
+    public static List<WeatherZoneSnapshot> getConnectedWallZones(Vec3 focus, int maxCount)
+    {
+        List<WeatherZoneSnapshot> wallZones = getActiveZones(focus);
+        if (wallZones.isEmpty())
+        {
+            return List.of();
+        }
+
+        List<Integer> seedIndexes = new ArrayList<>();
+        for (int zoneIndex = 0; zoneIndex < wallZones.size(); zoneIndex++)
+        {
+            WeatherZoneSnapshot zone = wallZones.get(zoneIndex);
+            if (isInsideZone(zone, focus))
+            {
+                seedIndexes.add(zoneIndex);
+            }
+        }
+
+        if (seedIndexes.isEmpty())
+        {
+            return wallZones.stream()
+                    .limit(maxCount)
+                    .toList();
+        }
+
+        boolean[] visited = new boolean[wallZones.size()];
+        List<WeatherZoneSnapshot> connectedZones = new ArrayList<>();
+        ArrayList<Integer> frontier = new ArrayList<>(seedIndexes);
+        int frontierIndex = 0;
+        while (frontierIndex < frontier.size())
+        {
+            int currentIndex = frontier.get(frontierIndex++);
+            if (visited[currentIndex])
+            {
+                continue;
+            }
+
+            visited[currentIndex] = true;
+            WeatherZoneSnapshot currentZone = wallZones.get(currentIndex);
+            connectedZones.add(currentZone);
+
+            for (int candidateIndex = 0; candidateIndex < wallZones.size(); candidateIndex++)
+            {
+                if (visited[candidateIndex])
+                {
+                    continue;
+                }
+
+                WeatherZoneSnapshot candidateZone = wallZones.get(candidateIndex);
+                if (zonesOverlap(currentZone, candidateZone))
+                {
+                    frontier.add(candidateIndex);
+                }
+            }
+        }
+
+        return connectedZones.stream()
+                .sorted(Comparator.comparingDouble(zone -> zone.center().distanceToSqr(focus)))
+                .limit(maxCount)
+                .toList();
+    }
+
     public static float getWallWeatherIntensity(float partialTick)
     {
         Minecraft minecraft = Minecraft.getInstance();
@@ -165,6 +227,17 @@ public final class FrostfireClientWeatherCache
         {
             return radius - distanceToCenter(x, z);
         }
+    }
+
+    private static boolean isInsideZone(WeatherZoneSnapshot zone, Vec3 pos)
+    {
+        return zone.center().distanceToSqr(pos.x, zone.center().y, pos.z) <= zone.radius() * zone.radius();
+    }
+
+    private static boolean zonesOverlap(WeatherZoneSnapshot firstZone, WeatherZoneSnapshot secondZone)
+    {
+        double maxDistance = firstZone.radius() + secondZone.radius();
+        return firstZone.center().distanceToSqr(secondZone.center()) <= maxDistance * maxDistance;
     }
 
     public record WeatherSuppressionSample(float strength, double insideDistance, Vec3 zoneCenter, double zoneRadius)

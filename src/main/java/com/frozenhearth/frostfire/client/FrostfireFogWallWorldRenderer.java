@@ -32,7 +32,6 @@ public final class FrostfireFogWallWorldRenderer
 {
     private static final RenderLevelStageEvent.Stage RENDER_STAGE = RenderLevelStageEvent.Stage.AFTER_LEVEL;
     private static final int MAX_ZONES = FrostfireClientWeatherCache.MAX_RENDERED_WALLS;
-    private static final float CAMERA_OUTSIDE_FADE_DISTANCE = 12.0F;
     private static final float WALL_HALF_THICKNESS = 14.5F;
     private static final float WALL_BOTTOM_OFFSET = -34.0F;
     private static final float WALL_TOP_OFFSET_CLEAR = 58.0F;
@@ -64,7 +63,7 @@ public final class FrostfireFogWallWorldRenderer
         Camera camera = event.getCamera();
         Vec3 cameraPos = camera.getPosition();
         List<FrostfireClientWeatherCache.WeatherZoneSnapshot> zones =
-                FrostfireClientWeatherCache.getNearestActiveZones(cameraPos, MAX_ZONES);
+                FrostfireClientWeatherCache.getConnectedWallZones(cameraPos, MAX_ZONES);
         if (zones.isEmpty())
         {
             return;
@@ -91,11 +90,6 @@ public final class FrostfireFogWallWorldRenderer
         List<FrostfireClientWeatherCache.WeatherZoneSnapshot> visible = new ArrayList<>(zones.size());
         for (FrostfireClientWeatherCache.WeatherZoneSnapshot zone : zones)
         {
-            if (!isCameraNearZone(zone, cameraPos))
-            {
-                continue;
-            }
-
             if (frustum == null)
             {
                 visible.add(zone);
@@ -117,14 +111,6 @@ public final class FrostfireFogWallWorldRenderer
             }
         }
         return visible;
-    }
-
-    private static boolean isCameraNearZone(FrostfireClientWeatherCache.WeatherZoneSnapshot zone, Vec3 cameraPos)
-    {
-        double dx = cameraPos.x - zone.center().x;
-        double dz = cameraPos.z - zone.center().z;
-        double fadeRadius = zone.radius() + WALL_HALF_THICKNESS + CAMERA_OUTSIDE_FADE_DISTANCE;
-        return (dx * dx) + (dz * dz) < (fadeRadius * fadeRadius);
     }
 
     private static void configureShader(ShaderInstance shader, RenderLevelStageEvent event, Camera camera, Vec3 cameraPos,
