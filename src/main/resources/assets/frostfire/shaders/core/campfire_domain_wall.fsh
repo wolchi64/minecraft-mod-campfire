@@ -39,6 +39,9 @@ const float DEPTH_SOFTEN_SPREAD_NEAR = 1.5;
 const float DEPTH_SOFTEN_SPREAD_FAR = 8.0;
 const float DEPTH_SOFTEN_BLEND = 0.65;
 const float OVERLAP_BLEND_DISTANCE = 6.0;
+const float OUTSIDE_VIEWER_DENSITY_BOOST = 2.2;
+const float OUTSIDE_VIEWER_OCCLUSION_RELAX = 0.7;
+const float OUTSIDE_VIEWER_MIN_ALPHA = 0.86;
 const int MAX_ZONES = 8;
 
 float hash(vec3 p) {
@@ -224,6 +227,25 @@ float overlapCutFactor(int currentZoneIndex, vec3 worldSample) {
     return cutFactor;
 }
 
+bool cameraInsideAnyZone() {
+    for (int zoneIndex = 0; zoneIndex < MAX_ZONES; zoneIndex++) {
+        if (float(zoneIndex) >= ActiveZoneCount) {
+            break;
+        }
+
+        vec4 zone = getZone(zoneIndex);
+        if (zone.w <= 0.0) {
+            continue;
+        }
+
+        float cameraDistance = length((CameraPos - zone.xyz).xz);
+        if (cameraDistance <= zone.w) {
+            return true;
+        }
+    }
+    return false;
+}
+
 float bandSegmentContribution(int currentZoneIndex, vec4 zone, vec3 rayDir, vec2 bandInterval, float stormFactor) {
     float bandLength = intervalLength(bandInterval);
     if (bandLength <= 0.0) {
@@ -305,6 +327,7 @@ float zoneContribution(int currentZoneIndex, vec4 zone, vec3 rayDir, float tMax,
 void main() {
     vec2 uv = clamp(TexCoord, vec2(0.0), vec2(1.0));
     vec3 rayDir = worldRayDirection(uv);
+    bool viewerInsideAnyZone = cameraInsideAnyZone();
 
     float occlusionFade;
     float tMax = stableDepthDistance(uv, occlusionFade);
@@ -315,6 +338,7 @@ void main() {
     }
 
     float stormFactor = clamp(WeatherIntensity, 0.0, 1.0);
+    float viewerOutsideFactor = viewerInsideAnyZone ? 0.0 : 1.0;
     float totalDensity = 0.0;
     for (int zoneIndex = 0; zoneIndex < MAX_ZONES; zoneIndex++) {
         if (float(zoneIndex) >= ActiveZoneCount) {
@@ -329,13 +353,17 @@ void main() {
         totalDensity += zoneContribution(zoneIndex, zone, rayDir, tMax, stormFactor);
     }
 
-    totalDensity *= occlusionFade * 1.15;
+    float adjustedOcclusionFade = mix(occlusionFade, 1.0, viewerOutsideFactor * OUTSIDE_VIEWER_OCCLUSION_RELAX);
+    totalDensity *= adjustedOcclusionFade * mix(1.15, OUTSIDE_VIEWER_DENSITY_BOOST, viewerOutsideFactor);
     float alpha = 1.0 - exp(-totalDensity);
+    if (viewerOutsideFactor > 0.5 && alpha > 0.002) {
+        alpha = max(alpha, OUTSIDE_VIEWER_MIN_ALPHA);
+    }
     alpha = clamp(alpha, 0.0, 0.995);
     if (alpha <= 0.002) {
         fragColor = vec4(0.0);
         return;
     }
 
-    fragColor = vec4(vec3(0.93, 0.93, 0.97), alpha);
+    fragColor = vec4(FogColor.rgb, alpha);
 }
