@@ -199,22 +199,6 @@ vec2 cylinderInterval(vec3 origin, vec3 rayDir, float radius, float tMax) {
     return clampInterval(vec2(t0, t1), tMax);
 }
 
-float bandSampleT(vec2 outerInterval, vec2 innerInterval, float innerRadius) {
-    if (innerRadius <= EPSILON || intervalLength(innerInterval) <= 0.0) {
-        return mix(outerInterval.x, outerInterval.y, 0.5);
-    }
-
-    if (outerInterval.x < innerInterval.x) {
-        return mix(outerInterval.x, innerInterval.x, 0.5);
-    }
-
-    if (innerInterval.y < outerInterval.y) {
-        return mix(innerInterval.y, outerInterval.y, 0.5);
-    }
-
-    return mix(outerInterval.x, outerInterval.y, 0.5);
-}
-
 float overlapCutFactor(int currentZoneIndex, vec3 worldSample) {
     float cutFactor = 1.0;
     for (int zoneIndex = 0; zoneIndex < MAX_ZONES; zoneIndex++) {
@@ -240,34 +224,18 @@ float overlapCutFactor(int currentZoneIndex, vec3 worldSample) {
     return cutFactor;
 }
 
-float zoneContribution(int currentZoneIndex, vec4 zone, vec3 rayDir, float tMax, float stormFactor) {
-    vec3 localOrigin = CameraPos - zone.xyz;
-    float outerRadius = zone.w + WallHalfThickness;
-    float innerRadius = max(zone.w, 0.0);
-
-    vec2 outerInterval = cylinderInterval(localOrigin, rayDir, outerRadius, tMax);
-    float outerLength = intervalLength(outerInterval);
-    if (outerLength <= 0.0) {
-        return 0.0;
-    }
-
-    vec2 innerInterval = invalidInterval();
-    float innerLength = 0.0;
-    if (innerRadius > EPSILON) {
-        innerInterval = cylinderInterval(localOrigin, rayDir, innerRadius, tMax);
-        innerLength = intervalLength(innerInterval);
-    }
-
-    float bandLength = max(0.0, outerLength - innerLength);
+float bandSegmentContribution(int currentZoneIndex, vec4 zone, vec3 rayDir, vec2 bandInterval, float stormFactor) {
+    float bandLength = intervalLength(bandInterval);
     if (bandLength <= 0.0) {
         return 0.0;
     }
+
     float visibilityFactor = smoothstep(MIN_VISIBLE_BAND, FULL_VISIBLE_BAND, bandLength);
     if (visibilityFactor <= 0.0001) {
         return 0.0;
     }
 
-    float sampleT = bandSampleT(outerInterval, innerInterval, innerRadius);
+    float sampleT = mix(bandInterval.x, bandInterval.y, 0.5);
     vec3 worldSample = CameraPos + (rayDir * sampleT);
     vec3 localSample = worldSample - zone.xyz;
     float overlapCut = overlapCutFactor(currentZoneIndex, worldSample);
@@ -303,6 +271,34 @@ float zoneContribution(int currentZoneIndex, vec4 zone, vec3 rayDir, float tMax,
     density *= edgeFactor;
     density *= verticalFactor;
     density *= overlapCut;
+    return density;
+}
+
+float zoneContribution(int currentZoneIndex, vec4 zone, vec3 rayDir, float tMax, float stormFactor) {
+    vec3 localOrigin = CameraPos - zone.xyz;
+    float outerRadius = zone.w + WallHalfThickness;
+    float innerRadius = max(zone.w, 0.0);
+
+    vec2 outerInterval = cylinderInterval(localOrigin, rayDir, outerRadius, tMax);
+    float outerLength = intervalLength(outerInterval);
+    if (outerLength <= 0.0) {
+        return 0.0;
+    }
+
+    if (innerRadius <= EPSILON) {
+        return bandSegmentContribution(currentZoneIndex, zone, rayDir, outerInterval, stormFactor);
+    }
+
+    vec2 innerInterval = cylinderInterval(localOrigin, rayDir, innerRadius, tMax);
+    float innerLength = intervalLength(innerInterval);
+    if (innerLength <= 0.0) {
+        return bandSegmentContribution(currentZoneIndex, zone, rayDir, outerInterval, stormFactor);
+    }
+
+    vec2 nearBand = clampInterval(vec2(outerInterval.x, innerInterval.x), tMax);
+    vec2 farBand = clampInterval(vec2(innerInterval.y, outerInterval.y), tMax);
+    float density = bandSegmentContribution(currentZoneIndex, zone, rayDir, nearBand, stormFactor);
+    density += bandSegmentContribution(currentZoneIndex, zone, rayDir, farBand, stormFactor);
     return density;
 }
 
