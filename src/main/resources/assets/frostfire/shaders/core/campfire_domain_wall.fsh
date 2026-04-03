@@ -40,15 +40,19 @@ const float DEPTH_SOFTEN_SPREAD_FAR = 8.0;
 const float DEPTH_SOFTEN_BLEND = 0.65;
 const float OVERLAP_BLEND_DISTANCE = 6.0;
 const float EDGE_FEATHER_EXTRA = 7.5;
-const float WALL_BOUNDARY_GAP_CAP = 3.5;
-const float WALL_BAND_WIDTH_CAP = 9.5;
+const float WALL_BOUNDARY_GAP_CAP = 2.75;
+const float WALL_BAND_WIDTH_CAP = 13.0;
 const float WALL_INNER_FADE = 3.5;
 const float WALL_OUTER_FADE = 3.0;
 const float RADIAL_WARP_STRENGTH = 2.8;
+const float SYSTEM_BRIDGE_FADE = 7.0;
 const float OUTSIDE_VIEWER_DENSITY_BOOST = 1.72;
 const float OUTSIDE_VIEWER_OCCLUSION_RELAX = 0.7;
 const int BAND_SAMPLE_COUNT = 3;
 const int MAX_ZONES = 8;
+
+float fogBoundaryGap();
+float fogBandWidth();
 
 float hash(vec3 p) {
     return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453123);
@@ -208,8 +212,47 @@ vec2 cylinderInterval(vec3 origin, vec3 rayDir, float radius, float tMax) {
     return clampInterval(vec2(t0, t1), tMax);
 }
 
-float overlapCutFactor(int currentZoneIndex, vec3 worldSample) {
+float systemBridgeFactor(int currentZoneIndex, vec4 currentZone, vec3 worldSample) {
+    float currentDistance = length((worldSample - currentZone.xyz).xz);
+    float currentBoundary = max(currentZone.w - fogBoundaryGap(), 0.0);
+    float currentNearBoundary = 1.0 - smoothstep(0.0, SYSTEM_BRIDGE_FADE, abs(currentDistance - currentBoundary));
+    if (currentNearBoundary <= 0.0001) {
+        return 0.0;
+    }
+
+    float bridgeFactor = 0.0;
+    for (int zoneIndex = 0; zoneIndex < MAX_ZONES; zoneIndex++) {
+        if (float(zoneIndex) >= ActiveZoneCount) {
+            break;
+        }
+        if (zoneIndex == currentZoneIndex) {
+            continue;
+        }
+
+        vec4 otherZone = getZone(zoneIndex);
+        if (otherZone.w <= 0.0) {
+            continue;
+        }
+
+        float centerDistance = length((currentZone.xyz - otherZone.xyz).xz);
+        float overlapDepth = (currentZone.w + otherZone.w) - centerDistance;
+        if (overlapDepth <= 0.0) {
+            continue;
+        }
+
+        float otherDistance = length((worldSample - otherZone.xyz).xz);
+        float otherBoundary = max(otherZone.w - fogBoundaryGap(), 0.0);
+        float otherNearBoundary = 1.0 - smoothstep(0.0, SYSTEM_BRIDGE_FADE, abs(otherDistance - otherBoundary));
+        float linkedFactor = smoothstep(0.0, SYSTEM_BRIDGE_FADE * 1.5, overlapDepth);
+        bridgeFactor = max(bridgeFactor, currentNearBoundary * otherNearBoundary * linkedFactor);
+    }
+
+    return bridgeFactor;
+}
+
+float overlapCutFactor(int currentZoneIndex, vec4 currentZone, vec3 worldSample) {
     float cutFactor = 1.0;
+    float bridgeFactor = systemBridgeFactor(currentZoneIndex, currentZone, worldSample);
     for (int zoneIndex = 0; zoneIndex < MAX_ZONES; zoneIndex++) {
         if (float(zoneIndex) >= ActiveZoneCount) {
             break;
@@ -225,7 +268,8 @@ float overlapCutFactor(int currentZoneIndex, vec3 worldSample) {
 
         float otherDistance = length((worldSample - otherZone.xyz).xz);
         float insideOtherZone = 1.0 - smoothstep(otherZone.w - OVERLAP_BLEND_DISTANCE, otherZone.w + OVERLAP_BLEND_DISTANCE, otherDistance);
-        cutFactor *= (1.0 - insideOtherZone);
+        float cutStrength = mix(1.0, 0.35, bridgeFactor);
+        cutFactor *= (1.0 - (insideOtherZone * cutStrength));
         if (cutFactor <= 0.0001) {
             return 0.0;
         }
@@ -305,7 +349,7 @@ float bandSegmentContribution(int currentZoneIndex, vec4 zone, vec3 rayDir, vec2
         float sampleT = mix(bandInterval.x, bandInterval.y, sampleLerp);
         vec3 worldSample = CameraPos + (rayDir * sampleT);
         vec3 localSample = worldSample - zone.xyz;
-        float overlapCut = overlapCutFactor(currentZoneIndex, worldSample);
+        float overlapCut = overlapCutFactor(currentZoneIndex, zone, worldSample);
         if (overlapCut <= 0.0001) {
             continue;
         }
