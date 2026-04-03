@@ -38,7 +38,6 @@ const float CLOSE_OCCLUDER_FADE_END = 10.0;
 const float DEPTH_SOFTEN_SPREAD_NEAR = 1.5;
 const float DEPTH_SOFTEN_SPREAD_FAR = 8.0;
 const float DEPTH_SOFTEN_BLEND = 0.65;
-const float CAMERA_OUTSIDE_FADE_DISTANCE = 12.0;
 const float OVERLAP_BLEND_DISTANCE = 6.0;
 const int MAX_ZONES = 8;
 
@@ -245,11 +244,6 @@ float zoneContribution(int currentZoneIndex, vec4 zone, vec3 rayDir, float tMax,
     vec3 localOrigin = CameraPos - zone.xyz;
     float outerRadius = zone.w + WallHalfThickness;
     float innerRadius = max(zone.w, 0.0);
-    float cameraDistance = length(localOrigin.xz);
-    float cameraFade = 1.0 - smoothstep(innerRadius, innerRadius + CAMERA_OUTSIDE_FADE_DISTANCE, cameraDistance);
-    if (cameraFade <= 0.0001) {
-        return 0.0;
-    }
 
     vec2 outerInterval = cylinderInterval(localOrigin, rayDir, outerRadius, tMax);
     float outerLength = intervalLength(outerInterval);
@@ -308,7 +302,6 @@ float zoneContribution(int currentZoneIndex, vec4 zone, vec3 rayDir, float tMax,
     density *= visibilityFactor;
     density *= edgeFactor;
     density *= verticalFactor;
-    density *= cameraFade;
     density *= overlapCut;
     return density;
 }
