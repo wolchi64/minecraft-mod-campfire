@@ -40,8 +40,11 @@ const float DEPTH_SOFTEN_SPREAD_FAR = 8.0;
 const float DEPTH_SOFTEN_BLEND = 0.65;
 const float OVERLAP_BLEND_DISTANCE = 6.0;
 const float EDGE_FEATHER_EXTRA = 7.5;
-const float WALL_SOFT_SKIRT = 11.0;
-const float RADIAL_WARP_STRENGTH = 5.75;
+const float WALL_BOUNDARY_GAP_CAP = 3.5;
+const float WALL_BAND_WIDTH_CAP = 9.5;
+const float WALL_INNER_FADE = 3.5;
+const float WALL_OUTER_FADE = 3.0;
+const float RADIAL_WARP_STRENGTH = 2.8;
 const float OUTSIDE_VIEWER_DENSITY_BOOST = 1.72;
 const float OUTSIDE_VIEWER_OCCLUSION_RELAX = 0.7;
 const int BAND_SAMPLE_COUNT = 3;
@@ -259,17 +262,30 @@ vec3 wallTintColor() {
     return mix(tintedColor, tintedColor * daylightClamp, daylightFactor);
 }
 
-float radialFogProfile(float radialOffset, float viewerOutsideFactor) {
-    float absOffset = abs(radialOffset);
-    float softRadius = WallHalfThickness + EDGE_FEATHER_EXTRA;
-    float hazeRadius = softRadius + WALL_SOFT_SKIRT;
-    float influenceFade = 1.0 - smoothstep(WallHalfThickness * 0.55, hazeRadius, absOffset);
-    float core = exp(-pow(radialOffset / max(WallHalfThickness * 0.70, 1.0), 2.0));
-    float haze = exp(-pow(radialOffset / max(softRadius + (WALL_SOFT_SKIRT * 0.45), 1.0), 2.0));
-    float outsideSkirt = smoothstep(-WallHalfThickness * 0.20, hazeRadius, radialOffset);
-    float profile = (core * 0.72) + (haze * 0.34);
-    profile += haze * outsideSkirt * viewerOutsideFactor * 0.24;
-    return profile * influenceFade;
+float fogBoundaryGap() {
+    return min(WallHalfThickness * 0.28, WALL_BOUNDARY_GAP_CAP);
+}
+
+float fogBandWidth() {
+    return min(WallHalfThickness * 0.72, WALL_BAND_WIDTH_CAP);
+}
+
+float radialFogProfile(float radialDistance, float zoneRadius, float radialWarp, float viewerOutsideFactor) {
+    float boundaryGap = fogBoundaryGap();
+    float bandWidth = fogBandWidth();
+    float fogOuterRadius = max(zoneRadius - boundaryGap, 0.0);
+    float fogInnerRadius = max(fogOuterRadius - bandWidth, 0.0);
+    float warpedDistance = radialDistance + radialWarp;
+    float innerFade = smoothstep(fogInnerRadius - (WALL_INNER_FADE * 0.25), fogInnerRadius + WALL_INNER_FADE, warpedDistance);
+    float outerFade = 1.0 - smoothstep(fogOuterRadius - WALL_OUTER_FADE, fogOuterRadius, warpedDistance);
+    float centerRadius = mix(fogInnerRadius, fogOuterRadius, 0.62);
+    float centerSpread = max(bandWidth * 0.42, 1.0);
+    float centerBody = exp(-pow((warpedDistance - centerRadius) / centerSpread, 2.0));
+    float edgeBias = smoothstep(centerRadius - centerSpread * 0.15, fogOuterRadius - 0.35, warpedDistance);
+    float profile = innerFade * outerFade;
+    profile *= mix(0.34, 1.0, centerBody);
+    profile *= mix(1.0, 1.10, edgeBias * viewerOutsideFactor);
+    return profile;
 }
 
 float bandSegmentContribution(int currentZoneIndex, vec4 zone, vec3 rayDir, vec2 bandInterval, float stormFactor,
@@ -313,14 +329,10 @@ float bandSegmentContribution(int currentZoneIndex, vec4 zone, vec3 rayDir, vec2
 
         float radialDistance = length(localSample.xz);
         float radialWarp = ((bodyNoise + detailNoise) - 1.0) * RADIAL_WARP_STRENGTH;
-        float radialOffset = (radialDistance - zone.w) + radialWarp;
-        float radialFactor = radialFogProfile(radialOffset, viewerOutsideFactor);
+        float radialFactor = radialFogProfile(radialDistance, zone.w, radialWarp, viewerOutsideFactor);
         if (radialFactor <= 0.0001) {
             continue;
         }
-
-        float outsideDensityBias = mix(1.0, 1.26, viewerOutsideFactor
-            * smoothstep(-WallHalfThickness * 0.25, WallHalfThickness + WALL_SOFT_SKIRT, radialOffset));
 
         float sampleDensity = stepLength * densityPerBlock;
         sampleDensity *= mix(0.78, 1.18, bodyNoise);
@@ -329,7 +341,6 @@ float bandSegmentContribution(int currentZoneIndex, vec4 zone, vec3 rayDir, vec2
         sampleDensity *= radialFactor;
         sampleDensity *= verticalFactor;
         sampleDensity *= overlapCut;
-        sampleDensity *= outsideDensityBias;
         density += sampleDensity;
     }
 
@@ -339,9 +350,8 @@ float bandSegmentContribution(int currentZoneIndex, vec4 zone, vec3 rayDir, vec2
 
 float zoneContribution(int currentZoneIndex, vec4 zone, vec3 rayDir, float tMax, float stormFactor, float viewerOutsideFactor) {
     vec3 localOrigin = CameraPos - zone.xyz;
-    float influenceRadius = WallHalfThickness + WALL_SOFT_SKIRT;
-    float outerRadius = zone.w + influenceRadius;
-    float innerRadius = max(zone.w - influenceRadius, 0.0);
+    float outerRadius = max(zone.w - fogBoundaryGap(), 0.0);
+    float innerRadius = max(outerRadius - fogBandWidth(), 0.0);
 
     vec2 outerInterval = cylinderInterval(localOrigin, rayDir, outerRadius, tMax);
     float outerLength = intervalLength(outerInterval);
