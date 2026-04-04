@@ -153,7 +153,7 @@ public class SurvivalCampfireBlockEntity extends BlockEntity
         {
             rate *= FrostfireConfig.getRoofProtectionMultiplier();
         }
-        else if (level.isRainingAt(worldPosition.above()))
+        else if (level.isRainingAt(worldPosition.above()) && !ActiveCampfireTracker.isWeatherSuppressed(level, worldPosition.above()))
         {
             rate *= FrostfireConfig.getOpenSkySnowMultiplier();
         }
@@ -321,6 +321,42 @@ public class SurvivalCampfireBlockEntity extends BlockEntity
                 if (tryMeltBlock(level, mutablePos))
                 {
                     break;
+                }
+            }
+        }
+    }
+
+    public void clearFreshWeatherSnow(ServerLevel level)
+    {
+        int radius = getActiveRadius();
+        if (radius <= 0 || !isActive() || !level.isRaining())
+        {
+            return;
+        }
+
+        BlockPos.MutableBlockPos mutablePos = new BlockPos.MutableBlockPos();
+        for (int dx = -radius; dx <= radius; dx++)
+        {
+            for (int dz = -radius; dz <= radius; dz++)
+            {
+                if ((dx * dx) + (dz * dz) > radius * radius)
+                {
+                    continue;
+                }
+
+                int x = worldPosition.getX() + dx;
+                int z = worldPosition.getZ() + dz;
+                int surfaceY = level.getHeight(Heightmap.Types.MOTION_BLOCKING, x, z);
+                int startY = Math.min(level.getMaxBuildHeight() - 1, surfaceY + 1);
+                int endY = Math.max(level.getMinBuildHeight(), surfaceY - 1);
+
+                for (int y = startY; y >= endY; y--)
+                {
+                    mutablePos.set(x, y, z);
+                    if (tryMeltBlock(level, mutablePos))
+                    {
+                        break;
+                    }
                 }
             }
         }
@@ -710,7 +746,8 @@ public class SurvivalCampfireBlockEntity extends BlockEntity
             return switch (layer)
             {
                 case 1 -> Math.abs(dx) <= 1 && Math.abs(dz) <= 1;
-                case 2, 3 -> false;
+                case 2 -> Math.abs(dx) <= 1 && Math.abs(dz) <= 1;
+                case 3 -> false;
                 default -> false;
             };
         }

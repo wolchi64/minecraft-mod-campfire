@@ -1,0 +1,15 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.frozenhearth.frostfire.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "mixins": [
+    "server.ServerLevelMixin"
+  ],
+  "client": [
+    "client.LevelRendererMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

@@ -75,6 +75,17 @@ public class FrostfireEvents
         {
             tryUpgradeVanillaCampfire(serverLevel, itemEntity);
         }
+
+        if (serverLevel.isRaining())
+        {
+            for (BlockPos pos : ActiveCampfireTracker.getActivePositions(serverLevel))
+            {
+                if (serverLevel.getBlockEntity(pos) instanceof SurvivalCampfireBlockEntity campfire)
+                {
+                    campfire.clearFreshWeatherSnow(serverLevel);
+                }
+            }
+        }
     }
 
     private static void tryUpgradeVanillaCampfire(ServerLevel level, ItemEntity itemEntity)

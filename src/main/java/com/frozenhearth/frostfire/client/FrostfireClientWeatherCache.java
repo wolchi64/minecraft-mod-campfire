@@ -102,6 +102,22 @@ public final class FrostfireClientWeatherCache
                 .toList();
     }
 
+    /**
+     * Returns the single nearest active fog-wall campfire in the connected zone system
+     * relevant to {@code cameraPos}, or {@code null} if none exist.
+     * The selection is authoritative (Java-side, exact distance) and stable.
+     */
+    public static WeatherZoneSnapshot getNearestRevealTarget(Vec3 cameraPos)
+    {
+        List<WeatherZoneSnapshot> zones = getConnectedWallZones(cameraPos, MAX_RENDERED_WALLS);
+        if (zones.isEmpty())
+        {
+            return null;
+        }
+        // getConnectedWallZones already sorts nearest-first; just take index 0.
+        return zones.get(0);
+    }
+
     public static List<WeatherZoneSnapshot> getConnectedWallZones(Vec3 focus, int maxCount)
     {
         List<WeatherZoneSnapshot> wallZones = getActiveZones(focus);

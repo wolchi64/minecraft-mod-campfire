@@ -26,7 +26,7 @@ public final class FrostfireConfig
     private static final ForgeConfigSpec.ConfigValue<List<? extends Double>> LEVEL_DECAY = BUILDER
             .defineListAllowEmpty("levelDecayPerSecond", List.of(20.0D, 20.0D, 50.0D, 150.0D, 500.0D), entry -> entry instanceof Double || entry instanceof Integer);
     private static final ForgeConfigSpec.ConfigValue<List<? extends Integer>> INNER_HEAT_RADII = BUILDER
-            .defineListAllowEmpty("innerHeatRadii", List.of(1, 5, 1, 2, 2), entry -> entry instanceof Integer value && value >= 0);
+            .defineListAllowEmpty("innerHeatRadii", List.of(1, 5, 1, 2, 5), entry -> entry instanceof Integer value && value >= 0);
     private static final ForgeConfigSpec.ConfigValue<List<? extends Double>> INNER_HEAT_CELSIUS = BUILDER
             .defineListAllowEmpty("innerHeatCelsius", List.of(12.0D, 25.0D, 35.0D, 50.0D, 85.0D), entry -> entry instanceof Double || entry instanceof Integer);
     private static final ForgeConfigSpec.ConfigValue<List<? extends Double>> OUTER_HEAT_CELSIUS = BUILDER
@@ -56,7 +56,7 @@ public final class FrostfireConfig
     private static int[] radii = new int[] {3, 5, 12, 25, 50};
     private static double[] heatStrengths = new double[] {0.02D, 0.05D, 0.12D, 0.25D, 0.40D};
     private static double[] levelDecay = new double[] {20.0D, 20.0D, 50.0D, 150.0D, 500.0D};
-    private static int[] innerHeatRadii = new int[] {1, 5, 1, 2, 2};
+    private static int[] innerHeatRadii = new int[] {1, 5, 1, 2, 5};
     private static double[] innerHeatCelsius = new double[] {12.0D, 25.0D, 35.0D, 50.0D, 85.0D};
     private static double[] outerHeatCelsius = new double[] {8.0D, 25.0D, 25.0D, 25.0D, 25.0D};
     private static int[] lightValues = new int[] {10, 11, 13, 14, 15};
@@ -132,6 +132,16 @@ public final class FrostfireConfig
     public static int getRadiusForLevel(int level)
     {
         return radii[Mth.clamp(level, 0, radii.length - 1)];
+    }
+
+    public static int getMaxCampfireRadius()
+    {
+        int maxRadius = 0;
+        for (int radius : radii)
+        {
+            maxRadius = Math.max(maxRadius, radius);
+        }
+        return maxRadius;
     }
 
     public static double getHeatStrengthForLevel(int level)

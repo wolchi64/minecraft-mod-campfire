@@ -1,7 +1,6 @@
 #version 150
 
 uniform sampler2D Sampler0;
-
 uniform vec2 TargetSize;
 uniform vec4 FogColor;
 uniform mat4 InverseProjMat;
@@ -24,6 +23,8 @@ uniform vec4 Zone4;
 uniform vec4 Zone5;
 uniform vec4 Zone6;
 uniform vec4 Zone7;
+uniform vec2 RevealMaskCenter;
+uniform float RevealMaskRadius;
 
 in vec2 TexCoord;
 out vec4 fragColor;
@@ -52,13 +53,9 @@ const float OUTSIDE_VIEWER_DENSITY_BOOST = 2.45;
 const float OUTSIDE_VIEWER_OCCLUSION_RELAX = 0.85;
 const float OUTSIDE_VISIBILITY_FADE_START = 6.0;
 const float OUTSIDE_VISIBILITY_FADE_END = 10.0;
-const float NEAREST_CAMP_REVEAL_RADIUS = 2.1;
-const float NEAREST_CAMP_REVEAL_SOFTNESS = 1.35;
 const float NEAREST_CAMP_REVEAL_MIN_DENSITY = 0.22;
 const float NEAREST_CAMP_REVEAL_WALL_START_DISTANCE = 4.0;
 const float NEAREST_CAMP_REVEAL_WALL_FULL_DISTANCE = 1.25;
-const float NEAREST_CAMP_REVEAL_DEPTH_MATCH_START = 1.25;
-const float NEAREST_CAMP_REVEAL_DEPTH_MATCH_END = 3.25;
 const int BAND_SAMPLE_COUNT = 3;
 const int MAX_ZONES = 8;
 
@@ -68,7 +65,6 @@ float boundaryRadius(vec4 zone);
 float outerBoundaryRadius(vec4 zone);
 float outsideViewerVisibilityFactor();
 int nearestZoneToCamera(out vec4 nearestZone, out float nearestOutsideWallDistance);
-float nearestCampRevealFactor(vec3 rayDir, vec4 zone, float outsideWallDistance, float tMax);
 
 float hash(vec3 p) {
     return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453123);
@@ -395,46 +391,6 @@ int nearestZoneToCamera(out vec4 nearestZone, out float nearestOutsideWallDistan
     return nearestZoneIndex;
 }
 
-float nearestCampRevealFactor(vec3 rayDir, vec4 zone, float outsideWallDistance, float tMax) {
-    if (zone.w <= 0.0) {
-        return 0.0;
-    }
-
-    float approachFactor = 1.0 - smoothstep(
-        NEAREST_CAMP_REVEAL_WALL_FULL_DISTANCE,
-        NEAREST_CAMP_REVEAL_WALL_START_DISTANCE,
-        outsideWallDistance
-    );
-    if (approachFactor <= 0.0001) {
-        return 0.0;
-    }
-
-    vec3 toCamp = zone.xyz - CameraPos;
-    float campDistanceAlongRay = dot(toCamp, rayDir);
-    if (campDistanceAlongRay <= 0.0) {
-        return 0.0;
-    }
-
-    vec3 closestPoint = CameraPos + (rayDir * campDistanceAlongRay);
-    float lateralDistance = length((zone.xyz - closestPoint).xz);
-    float revealRadius = max(NEAREST_CAMP_REVEAL_RADIUS, zone.w * 0.04);
-    float rayAlignmentFactor = 1.0 - smoothstep(
-        revealRadius,
-        revealRadius + NEAREST_CAMP_REVEAL_SOFTNESS,
-        lateralDistance
-    );
-    if (rayAlignmentFactor <= 0.0001) {
-        return 0.0;
-    }
-
-    float depthDelta = abs(tMax - campDistanceAlongRay);
-    float depthMatchFactor = 1.0 - smoothstep(
-        NEAREST_CAMP_REVEAL_DEPTH_MATCH_START,
-        NEAREST_CAMP_REVEAL_DEPTH_MATCH_END,
-        depthDelta
-    );
-    return approachFactor * rayAlignmentFactor * depthMatchFactor;
-}
 
 float radialFogProfile(float radialDistance, float zoneRadius, float radialWarp, float viewerOutsideFactor) {
     float boundaryGap = fogBoundaryGap();
@@ -565,10 +521,8 @@ void main() {
 
     vec4 nearestZone = vec4(0.0);
     float nearestZoneOutsideWallDistance = FarPlaneDistance;
-    int nearestZoneIndex = -1;
-    if (viewerOutsideFactor > 0.5) {
-        nearestZoneIndex = nearestZoneToCamera(nearestZone, nearestZoneOutsideWallDistance);
-    }
+    // Always look up nearest zone - needed on both sides of the boundary for the mask reveal.
+    int nearestZoneIndex = nearestZoneToCamera(nearestZone, nearestZoneOutsideWallDistance);
 
     float totalDensity = 0.0;
     for (int zoneIndex = 0; zoneIndex < MAX_ZONES; zoneIndex++) {
@@ -583,8 +537,24 @@ void main() {
 
         float zoneDensity = zoneContribution(zoneIndex, zone, rayDir, tMax, stormFactor, viewerOutsideFactor);
         if (viewerOutsideFactor > 0.5 && zoneIndex == nearestZoneIndex) {
-            float nearestCampReveal = nearestCampRevealFactor(rayDir, nearestZone, nearestZoneOutsideWallDistance, tMax);
-            zoneDensity *= mix(1.0, NEAREST_CAMP_REVEAL_MIN_DENSITY, nearestCampReveal);
+            // Authoritative mask: sample screen-space distance to the projected nearest campfire.
+            // RevealMaskCenter is the campfire's exact UV on screen; RevealMaskRadius is in UV-Y units.
+            // Apply aspect-ratio correction so the blob is circular in pixel space.
+            float maskValue = 0.0;
+            if (RevealMaskRadius > 0.0001) {
+                vec2 toCenter = uv - RevealMaskCenter;
+                toCenter.x *= TargetSize.x / TargetSize.y;
+                float maskDist = length(toCenter);
+                maskValue = 1.0 - smoothstep(RevealMaskRadius * 0.5, RevealMaskRadius, maskDist);
+            }
+            // Approach factor: reveal only activates near the wall, not when camera is far out.
+            float approachFactor = 1.0 - smoothstep(
+                NEAREST_CAMP_REVEAL_WALL_FULL_DISTANCE,
+                NEAREST_CAMP_REVEAL_WALL_START_DISTANCE,
+                nearestZoneOutsideWallDistance
+            );
+            float revealFactor = maskValue * approachFactor;
+            zoneDensity *= mix(1.0, NEAREST_CAMP_REVEAL_MIN_DENSITY, revealFactor);
         }
         totalDensity += zoneDensity;
     }

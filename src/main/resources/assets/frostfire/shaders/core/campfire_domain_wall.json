@@ -36,6 +36,8 @@
     { "name": "Zone4", "type": "float", "count": 4, "values": [ 0.0, 0.0, 0.0, 0.0 ] },
     { "name": "Zone5", "type": "float", "count": 4, "values": [ 0.0, 0.0, 0.0, 0.0 ] },
     { "name": "Zone6", "type": "float", "count": 4, "values": [ 0.0, 0.0, 0.0, 0.0 ] },
-    { "name": "Zone7", "type": "float", "count": 4, "values": [ 0.0, 0.0, 0.0, 0.0 ] }
+    { "name": "Zone7", "type": "float", "count": 4, "values": [ 0.0, 0.0, 0.0, 0.0 ] },
+    { "name": "RevealMaskCenter", "type": "float", "count": 2, "values": [ -2.0, -2.0 ] },
+    { "name": "RevealMaskRadius", "type": "float", "count": 1, "values": [ 0.0 ] }
   ]
 }

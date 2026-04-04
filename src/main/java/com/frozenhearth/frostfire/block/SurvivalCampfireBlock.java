@@ -5,7 +5,6 @@ import com.frozenhearth.frostfire.config.FrostfireConfig;
 import com.frozenhearth.frostfire.fuel.CampfireFuelRegistry;
 import com.frozenhearth.frostfire.registry.ModBlockEntities;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
@@ -208,26 +207,10 @@ public class SurvivalCampfireBlock extends BaseEntityBlock implements EntityBloc
     {
         if (!state.getValue(LIT))
         {
-            if (random.nextFloat() < 0.1F)
-            {
-                level.addParticle(ParticleTypes.CAMPFIRE_COSY_SMOKE, pos.getX() + 0.5D, pos.getY() + 0.5D, pos.getZ() + 0.5D, 0.0D, 0.02D, 0.0D);
-            }
             return;
         }
 
         int stage = state.getValue(LEVEL);
-        for (int i = 0; i < 1 + stage; i++)
-        {
-            double x = pos.getX() + 0.35D + (random.nextDouble() * 0.3D);
-            double z = pos.getZ() + 0.35D + (random.nextDouble() * 0.3D);
-            double y = pos.getY() + 0.35D + (stage * 0.08D);
-            level.addParticle(ParticleTypes.FLAME, x, y, z, 0.0D, 0.02D, 0.0D);
-            if (random.nextFloat() < 0.35F + (stage * 0.1F))
-            {
-                level.addParticle(ParticleTypes.CAMPFIRE_SIGNAL_SMOKE, x, y + 0.2D, z, 0.0D, 0.04D, 0.0D);
-            }
-        }
-
         if (random.nextInt(12) == 0)
         {
             level.playLocalSound(pos.getX() + 0.5D, pos.getY() + 0.5D, pos.getZ() + 0.5D, SoundEvents.CAMPFIRE_CRACKLE,

@@ -36,6 +36,7 @@ public final class FrostfireFogWallWorldRenderer
     private static final float WALL_BOTTOM_OFFSET = -34.0F;
     private static final float WALL_TOP_OFFSET_CLEAR = 58.0F;
     private static final float WALL_TOP_OFFSET_STORM = 74.0F;
+    private static final float REVEAL_MASK_WORLD_RADIUS = 3.0F;  // world-space radius of the reveal soft blob
     private static TextureTarget depthSnapshotTarget;
 
     private FrostfireFogWallWorldRenderer() {}
@@ -83,7 +84,9 @@ public final class FrostfireFogWallWorldRenderer
         float weatherIntensity = FrostfireClientWeatherCache.getWallWeatherIntensity(event.getPartialTick());
         float wallTime = (minecraft.level.getGameTime() + event.getPartialTick()) * 0.05F;
         RenderTarget mainRenderTarget = minecraft.getMainRenderTarget();
-        configureShader(shader, event, camera, cameraPos, visibleZones, weatherIntensity, wallTime, mainRenderTarget);
+        FrostfireClientWeatherCache.WeatherZoneSnapshot revealTarget =
+                FrostfireClientWeatherCache.getNearestRevealTarget(cameraPos);
+        configureShader(shader, event, camera, cameraPos, visibleZones, weatherIntensity, wallTime, mainRenderTarget, revealTarget);
         RenderTarget depthRenderTarget = ensureDepthSnapshotTarget(mainRenderTarget);
         depthRenderTarget.copyDepthFrom(mainRenderTarget);
         renderFogVolume(shader, mainRenderTarget, depthRenderTarget);
@@ -120,7 +123,8 @@ public final class FrostfireFogWallWorldRenderer
 
     private static void configureShader(ShaderInstance shader, RenderLevelStageEvent event, Camera camera, Vec3 cameraPos,
                                         List<FrostfireClientWeatherCache.WeatherZoneSnapshot> visibleZones,
-                                        float weatherIntensity, float wallTime, RenderTarget mainRenderTarget)
+                                        float weatherIntensity, float wallTime, RenderTarget mainRenderTarget,
+                                        FrostfireClientWeatherCache.WeatherZoneSnapshot revealTarget)
     {
         Matrix4f inverseProjection = new Matrix4f(event.getProjectionMatrix()).invert();
         Vector3f lookVector = camera.getLookVector();
@@ -156,6 +160,68 @@ public final class FrostfireFogWallWorldRenderer
                 shader.safeGetUniform(uniformName).set(0.0F, 0.0F, 0.0F, 0.0F);
             }
         }
+        setRevealMaskUniforms(shader, revealTarget, cameraPos, lookVector, upVector, leftVector, event.getProjectionMatrix());
+    }
+
+    /**
+     * Projects the nearest reveal campfire to screen UV and passes RevealMaskCenter / RevealMaskRadius
+     * to the fog shader.  When no target exists the mask is disabled (radius 0).
+     *
+     * Coordinate derivation mirrors the GLSL worldRayDirection() in the fragment shader:
+     *   worldDir = CameraLeft*(-vx) + CameraUp*(vy) + CameraLook*(-vz)
+     * Inverse: vx = -dot(world, left), vy = dot(world, up), vz = -dot(world, look)
+     */
+    private static void setRevealMaskUniforms(
+            ShaderInstance shader,
+            FrostfireClientWeatherCache.WeatherZoneSnapshot revealTarget,
+            Vec3 cameraPos, Vector3f look, Vector3f up, Vector3f left,
+            Matrix4f projMat)
+    {
+        if (revealTarget == null)
+        {
+            shader.safeGetUniform("RevealMaskCenter").set(-2.0F, -2.0F);
+            shader.safeGetUniform("RevealMaskRadius").set(0.0F);
+            return;
+        }
+
+        // Elevate to flame/smoke area
+        Vec3 campPos = revealTarget.center().add(0.0D, 1.5D, 0.0D);
+        double dx = campPos.x - cameraPos.x;
+        double dy = campPos.y - cameraPos.y;
+        double dz = campPos.z - cameraPos.z;
+
+        // View-space coords
+        float vx = -(float) (dx * left.x  + dy * left.y  + dz * left.z);
+        float vy =  (float) (dx * up.x    + dy * up.y    + dz * up.z);
+        float vz = -(float) (dx * look.x  + dy * look.y  + dz * look.z);
+
+        // vz < 0 means in front of camera (standard OpenGL view space)
+        if (vz >= -0.5F)
+        {
+            shader.safeGetUniform("RevealMaskCenter").set(-2.0F, -2.0F);
+            shader.safeGetUniform("RevealMaskRadius").set(0.0F);
+            return;
+        }
+
+        // Project to clip space
+        org.joml.Vector4f clipPos = projMat.transform(
+                new org.joml.Vector4f(vx, vy, vz, 1.0F), new org.joml.Vector4f());
+        if (clipPos.w <= 0.0F)
+        {
+            shader.safeGetUniform("RevealMaskCenter").set(-2.0F, -2.0F);
+            shader.safeGetUniform("RevealMaskRadius").set(0.0F);
+            return;
+        }
+
+        float uvX = (clipPos.x / clipPos.w) * 0.5F + 0.5F;
+        float uvY = (clipPos.y / clipPos.w) * 0.5F + 0.5F;
+
+        // Screen-space radius in UV-Y units (m11 = Y focal length of perspective matrix)
+        float screenRadius = projMat.m11() * REVEAL_MASK_WORLD_RADIUS / (2.0F * (-vz));
+        screenRadius = Mth.clamp(screenRadius, 0.025F, 0.30F);
+
+        shader.safeGetUniform("RevealMaskCenter").set(uvX, uvY);
+        shader.safeGetUniform("RevealMaskRadius").set(screenRadius);
     }
 
     private static void renderFogVolume(ShaderInstance shader, RenderTarget mainRenderTarget, RenderTarget depthRenderTarget)

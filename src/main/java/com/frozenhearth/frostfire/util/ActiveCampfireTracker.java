@@ -13,6 +13,7 @@ import net.minecraft.world.phys.Vec3;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -100,5 +101,52 @@ public final class ActiveCampfireTracker
             strongestFloor = Math.max(strongestFloor, targetMc);
         }
         return strongestFloor;
+    }
+
+    public static synchronized boolean isWeatherSuppressed(ServerLevel level, BlockPos pos)
+    {
+        Set<BlockPos> positions = ACTIVE.get(level.dimension());
+        if (positions == null || positions.isEmpty())
+        {
+            return false;
+        }
+
+        double x = pos.getX() + 0.5D;
+        double z = pos.getZ() + 0.5D;
+        Iterator<BlockPos> iterator = positions.iterator();
+        while (iterator.hasNext())
+        {
+            BlockPos campfirePos = iterator.next();
+            if (!level.isLoaded(campfirePos))
+            {
+                iterator.remove();
+                continue;
+            }
+
+            if (!(level.getBlockEntity(campfirePos) instanceof SurvivalCampfireBlockEntity campfire) || !campfire.isActive())
+            {
+                iterator.remove();
+                continue;
+            }
+
+            double radius = campfire.getActiveRadius();
+            double dx = x - (campfirePos.getX() + 0.5D);
+            double dz = z - (campfirePos.getZ() + 0.5D);
+            if ((dx * dx) + (dz * dz) <= radius * radius)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static synchronized List<BlockPos> getActivePositions(ServerLevel level)
+    {
+        Set<BlockPos> positions = ACTIVE.get(level.dimension());
+        if (positions == null || positions.isEmpty())
+        {
+            return List.of();
+        }
+        return List.copyOf(positions);
     }
 }
