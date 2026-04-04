@@ -42,14 +42,14 @@ const float OVERLAP_BLEND_DISTANCE = 6.0;
 const float EDGE_FEATHER_EXTRA = 7.5;
 const float WALL_BOUNDARY_GAP_CAP = 0.35;
 const float WALL_BAND_WIDTH_CAP = 13.0;
-const float WALL_OUTER_OVERHANG = 2.0;
+const float WALL_OUTER_OVERHANG = 4.0;
 const float WALL_INNER_FADE = 3.5;
 const float WALL_OUTER_FADE = 1.6;
 const float RADIAL_WARP_STRENGTH = 2.8;
 const float SYSTEM_BRIDGE_FADE = 9.0;
 const float SYSTEM_ROUNDING_RADIUS = 8.0;
-const float OUTSIDE_VIEWER_DENSITY_BOOST = 1.92;
-const float OUTSIDE_VIEWER_OCCLUSION_RELAX = 0.7;
+const float OUTSIDE_VIEWER_DENSITY_BOOST = 2.45;
+const float OUTSIDE_VIEWER_OCCLUSION_RELAX = 0.85;
 const int BAND_SAMPLE_COUNT = 3;
 const int MAX_ZONES = 8;
 
@@ -351,7 +351,7 @@ float radialFogProfile(float radialDistance, float zoneRadius, float radialWarp,
     float edgeBias = smoothstep(centerRadius - centerSpread * 0.15, fogOuterRadius - 0.35, warpedDistance);
     float profile = innerFade * outerFade;
     profile *= mix(0.34, 1.0, centerBody);
-    profile *= mix(1.0, 1.18, edgeBias * viewerOutsideFactor);
+    profile *= mix(1.0, 1.34, edgeBias * viewerOutsideFactor);
     return profile;
 }
 
