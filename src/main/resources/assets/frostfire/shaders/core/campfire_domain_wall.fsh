@@ -42,9 +42,9 @@ const float OVERLAP_BLEND_DISTANCE = 6.0;
 const float EDGE_FEATHER_EXTRA = 7.5;
 const float WALL_BOUNDARY_GAP_CAP = 0.35;
 const float WALL_BAND_WIDTH_CAP = 13.0;
-const float WALL_OUTER_OVERHANG = 4.0;
+const float WALL_OUTER_OVERHANG = 3.0;
 const float WALL_INNER_FADE = 3.5;
-const float WALL_OUTER_FADE = 1.6;
+const float WALL_OUTER_FADE = 2.8;
 const float RADIAL_WARP_STRENGTH = 2.8;
 const float SYSTEM_BRIDGE_FADE = 9.0;
 const float SYSTEM_ROUNDING_RADIUS = 8.0;
@@ -344,14 +344,14 @@ float radialFogProfile(float radialDistance, float zoneRadius, float radialWarp,
     float fogOuterRadius = max(zoneRadius - boundaryGap + WALL_OUTER_OVERHANG, 0.0);
     float warpedDistance = radialDistance + radialWarp;
     float innerFade = smoothstep(fogInnerRadius - (WALL_INNER_FADE * 0.25), fogInnerRadius + WALL_INNER_FADE, warpedDistance);
-    float outerFade = 1.0 - smoothstep(fogOuterRadius - WALL_OUTER_FADE, fogOuterRadius, warpedDistance);
-    float centerRadius = mix(fogInnerRadius, fogOuterRadius, 0.78);
+    float outerFade = 1.0 - smoothstep(fogOuterRadius - WALL_OUTER_FADE, fogOuterRadius + 0.85, warpedDistance);
+    float centerRadius = mix(fogInnerRadius, fogOuterRadius, 0.70);
     float centerSpread = max(bandWidth * 0.48, 1.0);
     float centerBody = exp(-pow((warpedDistance - centerRadius) / centerSpread, 2.0));
-    float edgeBias = smoothstep(centerRadius - centerSpread * 0.15, fogOuterRadius - 0.35, warpedDistance);
+    float edgeBias = smoothstep(centerRadius - centerSpread * 0.10, fogOuterRadius - 0.70, warpedDistance);
     float profile = innerFade * outerFade;
     profile *= mix(0.34, 1.0, centerBody);
-    profile *= mix(1.0, 1.34, edgeBias * viewerOutsideFactor);
+    profile *= mix(1.0, 1.16, edgeBias * viewerOutsideFactor);
     return profile;
 }
 
