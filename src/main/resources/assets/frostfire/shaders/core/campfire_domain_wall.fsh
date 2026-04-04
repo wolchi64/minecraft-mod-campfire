@@ -57,6 +57,8 @@ const float NEAREST_CAMP_REVEAL_SOFTNESS = 1.35;
 const float NEAREST_CAMP_REVEAL_MIN_DENSITY = 0.22;
 const float NEAREST_CAMP_REVEAL_WALL_START_DISTANCE = 4.0;
 const float NEAREST_CAMP_REVEAL_WALL_FULL_DISTANCE = 1.25;
+const float NEAREST_CAMP_REVEAL_DEPTH_MATCH_START = 1.25;
+const float NEAREST_CAMP_REVEAL_DEPTH_MATCH_END = 3.25;
 const int BAND_SAMPLE_COUNT = 3;
 const int MAX_ZONES = 8;
 
@@ -66,7 +68,7 @@ float boundaryRadius(vec4 zone);
 float outerBoundaryRadius(vec4 zone);
 float outsideViewerVisibilityFactor();
 int nearestZoneToCamera(out vec4 nearestZone, out float nearestOutsideWallDistance);
-float nearestCampRevealFactor(vec3 rayDir, vec4 zone, float outsideWallDistance);
+float nearestCampRevealFactor(vec3 rayDir, vec4 zone, float outsideWallDistance, float tMax);
 
 float hash(vec3 p) {
     return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453123);
@@ -393,7 +395,7 @@ int nearestZoneToCamera(out vec4 nearestZone, out float nearestOutsideWallDistan
     return nearestZoneIndex;
 }
 
-float nearestCampRevealFactor(vec3 rayDir, vec4 zone, float outsideWallDistance) {
+float nearestCampRevealFactor(vec3 rayDir, vec4 zone, float outsideWallDistance, float tMax) {
     if (zone.w <= 0.0) {
         return 0.0;
     }
@@ -408,20 +410,30 @@ float nearestCampRevealFactor(vec3 rayDir, vec4 zone, float outsideWallDistance)
     }
 
     vec3 toCamp = zone.xyz - CameraPos;
-    float alongRay = dot(toCamp, rayDir);
-    if (alongRay <= 0.0) {
+    float campDistanceAlongRay = dot(toCamp, rayDir);
+    if (campDistanceAlongRay <= 0.0) {
         return 0.0;
     }
 
-    vec3 closestPoint = CameraPos + (rayDir * alongRay);
+    vec3 closestPoint = CameraPos + (rayDir * campDistanceAlongRay);
     float lateralDistance = length((zone.xyz - closestPoint).xz);
     float revealRadius = max(NEAREST_CAMP_REVEAL_RADIUS, zone.w * 0.04);
-    float rayRevealFactor = 1.0 - smoothstep(
+    float rayAlignmentFactor = 1.0 - smoothstep(
         revealRadius,
         revealRadius + NEAREST_CAMP_REVEAL_SOFTNESS,
         lateralDistance
     );
-    return rayRevealFactor * approachFactor;
+    if (rayAlignmentFactor <= 0.0001) {
+        return 0.0;
+    }
+
+    float depthDelta = abs(tMax - campDistanceAlongRay);
+    float depthMatchFactor = 1.0 - smoothstep(
+        NEAREST_CAMP_REVEAL_DEPTH_MATCH_START,
+        NEAREST_CAMP_REVEAL_DEPTH_MATCH_END,
+        depthDelta
+    );
+    return approachFactor * rayAlignmentFactor * depthMatchFactor;
 }
 
 float radialFogProfile(float radialDistance, float zoneRadius, float radialWarp, float viewerOutsideFactor) {
@@ -571,7 +583,7 @@ void main() {
 
         float zoneDensity = zoneContribution(zoneIndex, zone, rayDir, tMax, stormFactor, viewerOutsideFactor);
         if (viewerOutsideFactor > 0.5 && zoneIndex == nearestZoneIndex) {
-            float nearestCampReveal = nearestCampRevealFactor(rayDir, nearestZone, nearestZoneOutsideWallDistance);
+            float nearestCampReveal = nearestCampRevealFactor(rayDir, nearestZone, nearestZoneOutsideWallDistance, tMax);
             zoneDensity *= mix(1.0, NEAREST_CAMP_REVEAL_MIN_DENSITY, nearestCampReveal);
         }
         totalDensity += zoneDensity;
