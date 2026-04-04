@@ -55,6 +55,8 @@ const float OUTSIDE_VISIBILITY_FADE_END = 10.0;
 const float NEAREST_CAMP_REVEAL_RADIUS = 3.2;
 const float NEAREST_CAMP_REVEAL_SOFTNESS = 2.4;
 const float NEAREST_CAMP_REVEAL_MIN_DENSITY = 0.22;
+const float NEAREST_CAMP_REVEAL_NEAR_START = 0.72;
+const float NEAREST_CAMP_REVEAL_NEAR_END = 0.96;
 const int BAND_SAMPLE_COUNT = 3;
 const int MAX_ZONES = 8;
 
@@ -551,7 +553,12 @@ void main() {
     totalDensity *= outsideVisibilityFactor;
     if (viewerOutsideFactor > 0.5) {
         float nearestCampReveal = nearestCampRevealFactor(rayDir);
-        totalDensity *= mix(1.0, NEAREST_CAMP_REVEAL_MIN_DENSITY, nearestCampReveal);
+        float nearDomainRevealFactor = smoothstep(
+            NEAREST_CAMP_REVEAL_NEAR_START,
+            NEAREST_CAMP_REVEAL_NEAR_END,
+            outsideVisibilityFactor
+        );
+        totalDensity *= mix(1.0, NEAREST_CAMP_REVEAL_MIN_DENSITY, nearestCampReveal * nearDomainRevealFactor);
     }
     float alpha = 1.0 - exp(-totalDensity);
     alpha = clamp(alpha, 0.0, 0.995);
