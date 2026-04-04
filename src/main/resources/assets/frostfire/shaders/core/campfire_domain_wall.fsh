@@ -52,6 +52,9 @@ const float OUTSIDE_VIEWER_DENSITY_BOOST = 2.45;
 const float OUTSIDE_VIEWER_OCCLUSION_RELAX = 0.85;
 const float OUTSIDE_VISIBILITY_FADE_START = 6.0;
 const float OUTSIDE_VISIBILITY_FADE_END = 10.0;
+const float NEAREST_CAMP_REVEAL_RADIUS = 3.2;
+const float NEAREST_CAMP_REVEAL_SOFTNESS = 2.4;
+const float NEAREST_CAMP_REVEAL_MIN_DENSITY = 0.22;
 const int BAND_SAMPLE_COUNT = 3;
 const int MAX_ZONES = 8;
 
@@ -60,6 +63,8 @@ float fogBandWidth();
 float boundaryRadius(vec4 zone);
 float outerBoundaryRadius(vec4 zone);
 float outsideViewerVisibilityFactor();
+vec4 nearestZoneToCamera();
+float nearestCampRevealFactor(vec3 rayDir);
 
 float hash(vec3 p) {
     return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453123);
@@ -360,6 +365,46 @@ float outsideViewerVisibilityFactor() {
     return 1.0 - smoothstep(OUTSIDE_VISIBILITY_FADE_START, OUTSIDE_VISIBILITY_FADE_END, nearestOutsideDistance);
 }
 
+vec4 nearestZoneToCamera() {
+    float nearestDistance = FarPlaneDistance;
+    vec4 nearestZone = vec4(0.0);
+    for (int zoneIndex = 0; zoneIndex < MAX_ZONES; zoneIndex++) {
+        if (float(zoneIndex) >= ActiveZoneCount) {
+            break;
+        }
+
+        vec4 zone = getZone(zoneIndex);
+        if (zone.w <= 0.0) {
+            continue;
+        }
+
+        float cameraDistance = length((CameraPos - zone.xyz).xz);
+        if (cameraDistance < nearestDistance) {
+            nearestDistance = cameraDistance;
+            nearestZone = zone;
+        }
+    }
+    return nearestZone;
+}
+
+float nearestCampRevealFactor(vec3 rayDir) {
+    vec4 nearestZone = nearestZoneToCamera();
+    if (nearestZone.w <= 0.0) {
+        return 0.0;
+    }
+
+    vec3 toCamp = nearestZone.xyz - CameraPos;
+    float alongRay = dot(toCamp, rayDir);
+    if (alongRay <= 0.0) {
+        return 0.0;
+    }
+
+    vec3 closestPoint = CameraPos + (rayDir * alongRay);
+    float lateralDistance = length((nearestZone.xyz - closestPoint).xz);
+    float revealRadius = max(NEAREST_CAMP_REVEAL_RADIUS, nearestZone.w * 0.06);
+    return 1.0 - smoothstep(revealRadius, revealRadius + NEAREST_CAMP_REVEAL_SOFTNESS, lateralDistance);
+}
+
 float radialFogProfile(float radialDistance, float zoneRadius, float radialWarp, float viewerOutsideFactor) {
     float boundaryGap = fogBoundaryGap();
     float bandWidth = fogBandWidth();
@@ -504,6 +549,10 @@ void main() {
     float adjustedOcclusionFade = mix(occlusionFade, 1.0, viewerOutsideFactor * OUTSIDE_VIEWER_OCCLUSION_RELAX);
     totalDensity *= adjustedOcclusionFade * mix(1.15, OUTSIDE_VIEWER_DENSITY_BOOST, viewerOutsideFactor);
     totalDensity *= outsideVisibilityFactor;
+    if (viewerOutsideFactor > 0.5) {
+        float nearestCampReveal = nearestCampRevealFactor(rayDir);
+        totalDensity *= mix(1.0, NEAREST_CAMP_REVEAL_MIN_DENSITY, nearestCampReveal);
+    }
     float alpha = 1.0 - exp(-totalDensity);
     alpha = clamp(alpha, 0.0, 0.995);
     if (alpha <= 0.002) {
