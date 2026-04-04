@@ -89,7 +89,25 @@ public final class FrostfireClientFogController
     private static Vec3 computeClearWeatherFogColor(ClientLevel level, Vec3 cameraPos, float partialTick)
     {
         Vec3 clearSkyColor = computeClearWeatherSkyColor(level, cameraPos, partialTick);
-        return level.effects().getBrightnessDependentFogColor(clearSkyColor, computeClearSkyDarken(level, partialTick));
+        Vec3 fogColor = level.effects().getBrightnessDependentFogColor(clearSkyColor, computeClearSkyDarken(level, partialTick));
+
+        float timeOfDay = level.getTimeOfDay(partialTick);
+        float dayBrightness = Mth.clamp(Mth.cos(timeOfDay * ((float) Math.PI * 2.0F)) * 2.0F + 0.5F, 0.0F, 1.0F);
+
+        if (dayBrightness > 0.0F)
+        {
+            double targetR = 0.95;
+            double targetG = 0.95;
+            double targetB = 0.90;
+            double blend = dayBrightness * 0.7; // 70% blend towards white during peak day
+            
+            double r = fogColor.x + blend * (targetR - fogColor.x);
+            double g = fogColor.y + blend * (targetG - fogColor.y);
+            double b = fogColor.z + blend * (targetB - fogColor.z);
+            return new Vec3(r, g, b);
+        }
+
+        return fogColor;
     }
 
     private static Vec3 computeClearWeatherSkyColor(ClientLevel level, Vec3 cameraPos, float partialTick)
