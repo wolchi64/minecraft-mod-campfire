@@ -50,6 +50,8 @@ const float SYSTEM_BRIDGE_FADE = 9.0;
 const float SYSTEM_ROUNDING_RADIUS = 8.0;
 const float OUTSIDE_VIEWER_DENSITY_BOOST = 2.45;
 const float OUTSIDE_VIEWER_OCCLUSION_RELAX = 0.85;
+const float OUTSIDE_VISIBILITY_FADE_START = 6.0;
+const float OUTSIDE_VISIBILITY_FADE_END = 10.0;
 const int BAND_SAMPLE_COUNT = 3;
 const int MAX_ZONES = 8;
 
@@ -57,6 +59,7 @@ float fogBoundaryGap();
 float fogBandWidth();
 float boundaryRadius(vec4 zone);
 float outerBoundaryRadius(vec4 zone);
+float outsideViewerVisibilityFactor();
 
 float hash(vec3 p) {
     return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453123);
@@ -337,6 +340,26 @@ float outerBoundaryRadius(vec4 zone) {
     return boundaryRadius(zone) + WALL_OUTER_OVERHANG;
 }
 
+float outsideViewerVisibilityFactor() {
+    float nearestOutsideDistance = FarPlaneDistance;
+    for (int zoneIndex = 0; zoneIndex < MAX_ZONES; zoneIndex++) {
+        if (float(zoneIndex) >= ActiveZoneCount) {
+            break;
+        }
+
+        vec4 zone = getZone(zoneIndex);
+        if (zone.w <= 0.0) {
+            continue;
+        }
+
+        float cameraDistance = length((CameraPos - zone.xyz).xz);
+        float outsideDistance = max(cameraDistance - zone.w, 0.0);
+        nearestOutsideDistance = min(nearestOutsideDistance, outsideDistance);
+    }
+
+    return 1.0 - smoothstep(OUTSIDE_VISIBILITY_FADE_START, OUTSIDE_VISIBILITY_FADE_END, nearestOutsideDistance);
+}
+
 float radialFogProfile(float radialDistance, float zoneRadius, float radialWarp, float viewerOutsideFactor) {
     float boundaryGap = fogBoundaryGap();
     float bandWidth = fogBandWidth();
@@ -458,6 +481,12 @@ void main() {
 
     float stormFactor = clamp(WeatherIntensity, 0.0, 1.0);
     float viewerOutsideFactor = viewerInsideAnyZone ? 0.0 : 1.0;
+    float outsideVisibilityFactor = mix(1.0, outsideViewerVisibilityFactor(), viewerOutsideFactor);
+    if (outsideVisibilityFactor <= 0.001) {
+        fragColor = vec4(0.0);
+        return;
+    }
+
     float totalDensity = 0.0;
     for (int zoneIndex = 0; zoneIndex < MAX_ZONES; zoneIndex++) {
         if (float(zoneIndex) >= ActiveZoneCount) {
@@ -474,6 +503,7 @@ void main() {
 
     float adjustedOcclusionFade = mix(occlusionFade, 1.0, viewerOutsideFactor * OUTSIDE_VIEWER_OCCLUSION_RELAX);
     totalDensity *= adjustedOcclusionFade * mix(1.15, OUTSIDE_VIEWER_DENSITY_BOOST, viewerOutsideFactor);
+    totalDensity *= outsideVisibilityFactor;
     float alpha = 1.0 - exp(-totalDensity);
     alpha = clamp(alpha, 0.0, 0.995);
     if (alpha <= 0.002) {
