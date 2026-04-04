@@ -40,14 +40,14 @@ const float DEPTH_SOFTEN_SPREAD_FAR = 8.0;
 const float DEPTH_SOFTEN_BLEND = 0.65;
 const float OVERLAP_BLEND_DISTANCE = 6.0;
 const float EDGE_FEATHER_EXTRA = 7.5;
-const float WALL_BOUNDARY_GAP_CAP = 2.75;
+const float WALL_BOUNDARY_GAP_CAP = 0.35;
 const float WALL_BAND_WIDTH_CAP = 13.0;
 const float WALL_INNER_FADE = 3.5;
-const float WALL_OUTER_FADE = 3.0;
+const float WALL_OUTER_FADE = 1.6;
 const float RADIAL_WARP_STRENGTH = 2.8;
 const float SYSTEM_BRIDGE_FADE = 9.0;
 const float SYSTEM_ROUNDING_RADIUS = 8.0;
-const float OUTSIDE_VIEWER_DENSITY_BOOST = 1.72;
+const float OUTSIDE_VIEWER_DENSITY_BOOST = 1.92;
 const float OUTSIDE_VIEWER_OCCLUSION_RELAX = 0.7;
 const int BAND_SAMPLE_COUNT = 3;
 const int MAX_ZONES = 8;
@@ -308,9 +308,12 @@ bool cameraInsideAnyZone() {
 
 vec3 wallTintColor() {
     float fogLuminance = dot(FogColor.rgb, vec3(0.2126, 0.7152, 0.0722));
+    float nightFactor = 1.0 - smoothstep(0.40, 0.60, fogLuminance);
     float daylightFactor = smoothstep(0.60, 0.86, fogLuminance);
+    vec3 nightTint = vec3(0.46, 0.44, 0.56);
     vec3 daylightTint = vec3(0.81, 0.82, 0.84);
-    vec3 tintedColor = mix(FogColor.rgb, daylightTint, daylightFactor * 0.28);
+    vec3 tintedColor = mix(FogColor.rgb, nightTint, nightFactor * 0.70);
+    tintedColor = mix(tintedColor, daylightTint, daylightFactor * 0.28);
     float tintedLuminance = dot(tintedColor, vec3(0.2126, 0.7152, 0.0722));
     float daylightClamp = min(1.0, 0.76 / max(tintedLuminance, EPSILON));
     return mix(tintedColor, tintedColor * daylightClamp, daylightFactor);
@@ -336,13 +339,13 @@ float radialFogProfile(float radialDistance, float zoneRadius, float radialWarp,
     float warpedDistance = radialDistance + radialWarp;
     float innerFade = smoothstep(fogInnerRadius - (WALL_INNER_FADE * 0.25), fogInnerRadius + WALL_INNER_FADE, warpedDistance);
     float outerFade = 1.0 - smoothstep(fogOuterRadius - WALL_OUTER_FADE, fogOuterRadius, warpedDistance);
-    float centerRadius = mix(fogInnerRadius, fogOuterRadius, 0.62);
-    float centerSpread = max(bandWidth * 0.42, 1.0);
+    float centerRadius = mix(fogInnerRadius, fogOuterRadius, 0.78);
+    float centerSpread = max(bandWidth * 0.48, 1.0);
     float centerBody = exp(-pow((warpedDistance - centerRadius) / centerSpread, 2.0));
     float edgeBias = smoothstep(centerRadius - centerSpread * 0.15, fogOuterRadius - 0.35, warpedDistance);
     float profile = innerFade * outerFade;
     profile *= mix(0.34, 1.0, centerBody);
-    profile *= mix(1.0, 1.10, edgeBias * viewerOutsideFactor);
+    profile *= mix(1.0, 1.18, edgeBias * viewerOutsideFactor);
     return profile;
 }
 
@@ -353,7 +356,7 @@ float bandSegmentContribution(int currentZoneIndex, vec4 zone, vec3 rayDir, vec2
         return 0.0;
     }
 
-    float densityPerBlock = mix(0.28, 0.43, stormFactor);
+    float densityPerBlock = mix(0.34, 0.52, stormFactor);
     float visibilityFactor = smoothstep(MIN_VISIBLE_BAND * 0.35, FULL_VISIBLE_BAND, bandLength);
     float stepLength = bandLength / float(BAND_SAMPLE_COUNT);
     float density = 0.0;
