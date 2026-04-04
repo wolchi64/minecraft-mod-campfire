@@ -42,6 +42,7 @@ const float OVERLAP_BLEND_DISTANCE = 6.0;
 const float EDGE_FEATHER_EXTRA = 7.5;
 const float WALL_BOUNDARY_GAP_CAP = 0.35;
 const float WALL_BAND_WIDTH_CAP = 13.0;
+const float WALL_OUTER_OVERHANG = 2.0;
 const float WALL_INNER_FADE = 3.5;
 const float WALL_OUTER_FADE = 1.6;
 const float RADIAL_WARP_STRENGTH = 2.8;
@@ -55,6 +56,7 @@ const int MAX_ZONES = 8;
 float fogBoundaryGap();
 float fogBandWidth();
 float boundaryRadius(vec4 zone);
+float outerBoundaryRadius(vec4 zone);
 
 float hash(vec3 p) {
     return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453123);
@@ -331,11 +333,15 @@ float boundaryRadius(vec4 zone) {
     return max(zone.w - fogBoundaryGap(), 0.0);
 }
 
+float outerBoundaryRadius(vec4 zone) {
+    return boundaryRadius(zone) + WALL_OUTER_OVERHANG;
+}
+
 float radialFogProfile(float radialDistance, float zoneRadius, float radialWarp, float viewerOutsideFactor) {
     float boundaryGap = fogBoundaryGap();
     float bandWidth = fogBandWidth();
-    float fogOuterRadius = max(zoneRadius - boundaryGap, 0.0);
-    float fogInnerRadius = max(fogOuterRadius - bandWidth, 0.0);
+    float fogInnerRadius = max(zoneRadius - boundaryGap - bandWidth, 0.0);
+    float fogOuterRadius = max(zoneRadius - boundaryGap + WALL_OUTER_OVERHANG, 0.0);
     float warpedDistance = radialDistance + radialWarp;
     float innerFade = smoothstep(fogInnerRadius - (WALL_INNER_FADE * 0.25), fogInnerRadius + WALL_INNER_FADE, warpedDistance);
     float outerFade = 1.0 - smoothstep(fogOuterRadius - WALL_OUTER_FADE, fogOuterRadius, warpedDistance);
@@ -411,8 +417,8 @@ float bandSegmentContribution(int currentZoneIndex, vec4 zone, vec3 rayDir, vec2
 
 float zoneContribution(int currentZoneIndex, vec4 zone, vec3 rayDir, float tMax, float stormFactor, float viewerOutsideFactor) {
     vec3 localOrigin = CameraPos - zone.xyz;
-    float outerRadius = max(zone.w - fogBoundaryGap(), 0.0);
-    float innerRadius = max(outerRadius - fogBandWidth(), 0.0);
+    float innerRadius = max(boundaryRadius(zone) - fogBandWidth(), 0.0);
+    float outerRadius = outerBoundaryRadius(zone);
 
     vec2 outerInterval = cylinderInterval(localOrigin, rayDir, outerRadius, tMax);
     float outerLength = intervalLength(outerInterval);
