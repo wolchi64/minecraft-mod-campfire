@@ -68,6 +68,14 @@ public final class FrostfireFogWallWorldRenderer
 
         Camera camera = event.getCamera();
         Vec3 cameraPos = camera.getPosition();
+        FrostfireClientWeatherCache.WeatherSuppressionSample suppression =
+                FrostfireClientWeatherCache.sampleWeatherSuppression(cameraPos);
+        float interiorWallAlphaScale = FrostfireFogBlend.computeInteriorWallAlphaScale(suppression.insideDistance());
+        if (interiorWallAlphaScale <= 0.001F)
+        {
+            return;
+        }
+
         List<FrostfireClientWeatherCache.WeatherZoneSnapshot> zones =
                 FrostfireClientWeatherCache.getConnectedWallZones(cameraPos, MAX_ZONES);
         if (zones.isEmpty())
@@ -86,7 +94,8 @@ public final class FrostfireFogWallWorldRenderer
         RenderTarget mainRenderTarget = minecraft.getMainRenderTarget();
         FrostfireClientWeatherCache.WeatherZoneSnapshot revealTarget =
                 FrostfireClientWeatherCache.getNearestRevealTarget(cameraPos);
-        configureShader(shader, event, camera, cameraPos, visibleZones, weatherIntensity, wallTime, mainRenderTarget, revealTarget);
+        configureShader(shader, event, camera, cameraPos, visibleZones, weatherIntensity, wallTime,
+                mainRenderTarget, revealTarget, interiorWallAlphaScale);
         RenderTarget depthRenderTarget = ensureDepthSnapshotTarget(mainRenderTarget);
         depthRenderTarget.copyDepthFrom(mainRenderTarget);
         renderFogVolume(shader, mainRenderTarget, depthRenderTarget);
@@ -124,7 +133,8 @@ public final class FrostfireFogWallWorldRenderer
     private static void configureShader(ShaderInstance shader, RenderLevelStageEvent event, Camera camera, Vec3 cameraPos,
                                         List<FrostfireClientWeatherCache.WeatherZoneSnapshot> visibleZones,
                                         float weatherIntensity, float wallTime, RenderTarget mainRenderTarget,
-                                        FrostfireClientWeatherCache.WeatherZoneSnapshot revealTarget)
+                                        FrostfireClientWeatherCache.WeatherZoneSnapshot revealTarget,
+                                        float interiorWallAlphaScale)
     {
         Matrix4f inverseProjection = new Matrix4f(event.getProjectionMatrix()).invert();
         Vector3f lookVector = camera.getLookVector();
@@ -144,6 +154,7 @@ public final class FrostfireFogWallWorldRenderer
         shader.safeGetUniform("WallBottomOffset").set(WALL_BOTTOM_OFFSET);
         shader.safeGetUniform("WallTopOffset").set(wallTopOffset);
         shader.safeGetUniform("FarPlaneDistance").set(Minecraft.getInstance().gameRenderer.getDepthFar());
+        shader.safeGetUniform("InteriorWallAlphaScale").set(interiorWallAlphaScale);
         shader.safeGetUniform("ActiveZoneCount").set((float) visibleZones.size());
 
         for (int zoneIndex = 0; zoneIndex < MAX_ZONES; zoneIndex++)

@@ -14,6 +14,7 @@ uniform float WallHalfThickness;
 uniform float WallBottomOffset;
 uniform float WallTopOffset;
 uniform float FarPlaneDistance;
+uniform float InteriorWallAlphaScale;
 uniform float ActiveZoneCount;
 uniform vec4 Zone0;
 uniform vec4 Zone1;
@@ -559,6 +560,7 @@ void main() {
         totalDensity += zoneDensity;
     }
 
+    totalDensity *= InteriorWallAlphaScale;
     float adjustedOcclusionFade = mix(occlusionFade, 1.0, viewerOutsideFactor * OUTSIDE_VIEWER_OCCLUSION_RELAX);
     totalDensity *= adjustedOcclusionFade * mix(1.15, OUTSIDE_VIEWER_DENSITY_BOOST, viewerOutsideFactor);
     totalDensity *= outsideVisibilityFactor;
