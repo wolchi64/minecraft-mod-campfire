@@ -39,30 +39,4 @@ class FrostfireFogBlendTest
         assertEquals(1.0F, FrostfireFogBlend.computeVisualBlend(16.0D));
         assertEquals(1.0F, FrostfireFogBlend.computeVisualBlend(24.0D));
     }
-
-    @Test
-    void wallAlphaScaleStaysOpaqueOutsideAndAtBoundary()
-    {
-        assertEquals(1.0F, FrostfireFogBlend.computeInteriorWallAlphaScale(-1.0D));
-        assertEquals(1.0F, FrostfireFogBlend.computeInteriorWallAlphaScale(0.0D));
-    }
-
-    @Test
-    void wallAlphaScaleDecreasesAsCameraMovesDeeperInside()
-    {
-        float nearEdge = FrostfireFogBlend.computeInteriorWallAlphaScale(1.0D);
-        float midZone = FrostfireFogBlend.computeInteriorWallAlphaScale(8.0D);
-        float deepInside = FrostfireFogBlend.computeInteriorWallAlphaScale(15.0D);
-
-        assertTrue(nearEdge < 1.0F, "Expected the wall to start fading once inside the system");
-        assertTrue(nearEdge > midZone, "Expected the wall alpha scale to decrease with inside distance");
-        assertTrue(midZone > deepInside, "Expected the wall alpha scale to keep decreasing deeper inside");
-    }
-
-    @Test
-    void wallAlphaScaleReachesZeroAtFullInteriorClearDistance()
-    {
-        assertEquals(0.0F, FrostfireFogBlend.computeInteriorWallAlphaScale(16.0D));
-        assertEquals(0.0F, FrostfireFogBlend.computeInteriorWallAlphaScale(24.0D));
-    }
 }

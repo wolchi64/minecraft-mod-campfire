@@ -28,7 +28,6 @@
     { "name": "WallBottomOffset", "type": "float", "count": 1, "values": [ -34.0 ] },
     { "name": "WallTopOffset", "type": "float", "count": 1, "values": [ 96.0 ] },
     { "name": "FarPlaneDistance", "type": "float", "count": 1, "values": [ 256.0 ] },
-    { "name": "InteriorWallAlphaScale", "type": "float", "count": 1, "values": [ 1.0 ] },
     { "name": "ActiveZoneCount", "type": "float", "count": 1, "values": [ 0.0 ] },
     { "name": "Zone0", "type": "float", "count": 4, "values": [ 0.0, 0.0, 0.0, 0.0 ] },
     { "name": "Zone1", "type": "float", "count": 4, "values": [ 0.0, 0.0, 0.0, 0.0 ] },

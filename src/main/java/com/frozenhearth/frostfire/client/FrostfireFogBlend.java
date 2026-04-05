@@ -14,11 +14,6 @@ final class FrostfireFogBlend
         return 1.0F - (remaining * remaining * remaining);
     }
 
-    static float computeInteriorWallAlphaScale(double insideDistance)
-    {
-        return 1.0F - computeVisualBlend(insideDistance);
-    }
-
     private static float clamp01(float value)
     {
         return Math.max(0.0F, Math.min(1.0F, value));
