@@ -13,9 +13,7 @@ import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.ShaderInstance;
-import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.util.Mth;
-import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.RenderLevelStageEvent;
@@ -24,7 +22,6 @@ import net.minecraftforge.fml.common.Mod;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Mod.EventBusSubscriber(modid = FrostfireCampfireMod.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE, value = Dist.CLIENT)
@@ -75,50 +72,15 @@ public final class FrostfireFogWallWorldRenderer
             return;
         }
 
-        List<FrostfireClientWeatherCache.WeatherZoneSnapshot> visibleZones = filterVisibleZones(zones, cameraPos, event.getFrustum());
-        if (visibleZones.isEmpty())
-        {
-            return;
-        }
-
         float weatherIntensity = FrostfireClientWeatherCache.getWallWeatherIntensity(event.getPartialTick());
         float wallTime = (minecraft.level.getGameTime() + event.getPartialTick()) * 0.05F;
         RenderTarget mainRenderTarget = minecraft.getMainRenderTarget();
         FrostfireClientWeatherCache.WeatherZoneSnapshot revealTarget =
                 FrostfireClientWeatherCache.getNearestRevealTarget(cameraPos);
-        configureShader(shader, event, camera, cameraPos, visibleZones, weatherIntensity, wallTime, mainRenderTarget, revealTarget);
+        configureShader(shader, event, camera, cameraPos, zones, weatherIntensity, wallTime, mainRenderTarget, revealTarget);
         RenderTarget depthRenderTarget = ensureDepthSnapshotTarget(mainRenderTarget);
         depthRenderTarget.copyDepthFrom(mainRenderTarget);
         renderFogVolume(shader, mainRenderTarget, depthRenderTarget);
-    }
-
-    private static List<FrostfireClientWeatherCache.WeatherZoneSnapshot> filterVisibleZones(
-            List<FrostfireClientWeatherCache.WeatherZoneSnapshot> zones, Vec3 cameraPos, Frustum frustum)
-    {
-        List<FrostfireClientWeatherCache.WeatherZoneSnapshot> visible = new ArrayList<>(zones.size());
-        for (FrostfireClientWeatherCache.WeatherZoneSnapshot zone : zones)
-        {
-            if (frustum == null)
-            {
-                visible.add(zone);
-                continue;
-            }
-
-            double outerRadius = zone.radius() + WALL_HALF_THICKNESS;
-            Vec3 center = zone.center();
-            AABB bounds = new AABB(
-                    center.x - outerRadius,
-                    center.y + WALL_BOTTOM_OFFSET,
-                    center.z - outerRadius,
-                    center.x + outerRadius,
-                    center.y + WALL_TOP_OFFSET_STORM,
-                    center.z + outerRadius);
-            if (frustum.isVisible(bounds))
-            {
-                visible.add(zone);
-            }
-        }
-        return visible;
     }
 
     private static void configureShader(ShaderInstance shader, RenderLevelStageEvent event, Camera camera, Vec3 cameraPos,

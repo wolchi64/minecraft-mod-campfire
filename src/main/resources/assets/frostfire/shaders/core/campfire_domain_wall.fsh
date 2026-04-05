@@ -23,6 +23,30 @@ uniform vec4 Zone4;
 uniform vec4 Zone5;
 uniform vec4 Zone6;
 uniform vec4 Zone7;
+uniform vec4 Zone8;
+uniform vec4 Zone9;
+uniform vec4 Zone10;
+uniform vec4 Zone11;
+uniform vec4 Zone12;
+uniform vec4 Zone13;
+uniform vec4 Zone14;
+uniform vec4 Zone15;
+uniform vec4 Zone16;
+uniform vec4 Zone17;
+uniform vec4 Zone18;
+uniform vec4 Zone19;
+uniform vec4 Zone20;
+uniform vec4 Zone21;
+uniform vec4 Zone22;
+uniform vec4 Zone23;
+uniform vec4 Zone24;
+uniform vec4 Zone25;
+uniform vec4 Zone26;
+uniform vec4 Zone27;
+uniform vec4 Zone28;
+uniform vec4 Zone29;
+uniform vec4 Zone30;
+uniform vec4 Zone31;
 uniform vec2 RevealMaskCenter;
 uniform float RevealMaskRadius;
 
@@ -57,7 +81,7 @@ const float NEAREST_CAMP_REVEAL_MIN_DENSITY = 0.22;
 const float NEAREST_CAMP_REVEAL_WALL_START_DISTANCE = 4.0;
 const float NEAREST_CAMP_REVEAL_WALL_FULL_DISTANCE = 1.25;
 const int BAND_SAMPLE_COUNT = 3;
-const int MAX_ZONES = 8;
+const int MAX_ZONES = 32;
 
 float fogBoundaryGap();
 float fogBandWidth();
@@ -108,7 +132,31 @@ vec4 getZone(int index) {
     if (index == 4) return Zone4;
     if (index == 5) return Zone5;
     if (index == 6) return Zone6;
-    return Zone7;
+    if (index == 7) return Zone7;
+    if (index == 8) return Zone8;
+    if (index == 9) return Zone9;
+    if (index == 10) return Zone10;
+    if (index == 11) return Zone11;
+    if (index == 12) return Zone12;
+    if (index == 13) return Zone13;
+    if (index == 14) return Zone14;
+    if (index == 15) return Zone15;
+    if (index == 16) return Zone16;
+    if (index == 17) return Zone17;
+    if (index == 18) return Zone18;
+    if (index == 19) return Zone19;
+    if (index == 20) return Zone20;
+    if (index == 21) return Zone21;
+    if (index == 22) return Zone22;
+    if (index == 23) return Zone23;
+    if (index == 24) return Zone24;
+    if (index == 25) return Zone25;
+    if (index == 26) return Zone26;
+    if (index == 27) return Zone27;
+    if (index == 28) return Zone28;
+    if (index == 29) return Zone29;
+    if (index == 30) return Zone30;
+    return Zone31;
 }
 
 vec2 invalidInterval() {
@@ -262,7 +310,12 @@ float systemBridgeFactor(int currentZoneIndex, vec4 currentZone, vec3 worldSampl
             length(vec2(currentBoundaryDelta, otherBoundaryDelta)));
         float edgePairPresence = currentNearBoundary * otherNearBoundary;
         float bridgePresence = max((roundedSeam * 1.18), edgePairPresence * 0.78);
-        bridgeFactor = max(bridgeFactor, bridgePresence * linkedFactor);
+        
+        float penetrationA = max(0.0, currentBoundary - currentDistance);
+        float penetrationB = max(0.0, otherBoundary - otherDistance);
+        float interiorFade = 1.0 - smoothstep(1.0, 6.0, penetrationA + penetrationB);
+        
+        bridgeFactor = max(bridgeFactor, bridgePresence * linkedFactor * interiorFade);
     }
 
     return bridgeFactor;
@@ -286,8 +339,8 @@ float overlapCutFactor(int currentZoneIndex, vec4 currentZone, vec3 worldSample)
 
         float otherDistance = length((worldSample - otherZone.xyz).xz);
         float otherBoundary = boundaryRadius(otherZone);
-        float insideOtherZone = 1.0 - smoothstep(otherBoundary - OVERLAP_BLEND_DISTANCE,
-            otherBoundary + (OVERLAP_BLEND_DISTANCE * 0.65), otherDistance);
+        float insideOtherZone = 1.0 - smoothstep(otherBoundary - 2.0,
+            otherBoundary + OVERLAP_BLEND_DISTANCE, otherDistance);
         float cutStrength = mix(1.0, 0.12, bridgeFactor);
         cutFactor *= (1.0 - (insideOtherZone * cutStrength));
         if (cutFactor <= 0.0001) {

@@ -10,34 +10,564 @@
     "Position"
   ],
   "samplers": [
-    { "name": "Sampler0" }
+    {
+      "name": "Sampler0"
+    }
   ],
   "uniforms": [
-    { "name": "ModelViewMat", "type": "matrix4x4", "count": 16, "values": [ 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0 ] },
-    { "name": "ProjMat", "type": "matrix4x4", "count": 16, "values": [ 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0 ] },
-    { "name": "TargetSize", "type": "float", "count": 2, "values": [ 1.0, 1.0 ] },
-    { "name": "FogColor", "type": "float", "count": 4, "values": [ 0.7, 0.8, 0.9, 1.0 ] },
-    { "name": "InverseProjMat", "type": "matrix4x4", "count": 16, "values": [ 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0 ] },
-    { "name": "CameraPos", "type": "float", "count": 3, "values": [ 0.0, 0.0, 0.0 ] },
-    { "name": "CameraLook", "type": "float", "count": 3, "values": [ 0.0, 0.0, -1.0 ] },
-    { "name": "CameraUp", "type": "float", "count": 3, "values": [ 0.0, 1.0, 0.0 ] },
-    { "name": "CameraLeft", "type": "float", "count": 3, "values": [ -1.0, 0.0, 0.0 ] },
-    { "name": "Time", "type": "float", "count": 1, "values": [ 0.0 ] },
-    { "name": "WeatherIntensity", "type": "float", "count": 1, "values": [ 0.0 ] },
-    { "name": "WallHalfThickness", "type": "float", "count": 1, "values": [ 8.75 ] },
-    { "name": "WallBottomOffset", "type": "float", "count": 1, "values": [ -34.0 ] },
-    { "name": "WallTopOffset", "type": "float", "count": 1, "values": [ 96.0 ] },
-    { "name": "FarPlaneDistance", "type": "float", "count": 1, "values": [ 256.0 ] },
-    { "name": "ActiveZoneCount", "type": "float", "count": 1, "values": [ 0.0 ] },
-    { "name": "Zone0", "type": "float", "count": 4, "values": [ 0.0, 0.0, 0.0, 0.0 ] },
-    { "name": "Zone1", "type": "float", "count": 4, "values": [ 0.0, 0.0, 0.0, 0.0 ] },
-    { "name": "Zone2", "type": "float", "count": 4, "values": [ 0.0, 0.0, 0.0, 0.0 ] },
-    { "name": "Zone3", "type": "float", "count": 4, "values": [ 0.0, 0.0, 0.0, 0.0 ] },
-    { "name": "Zone4", "type": "float", "count": 4, "values": [ 0.0, 0.0, 0.0, 0.0 ] },
-    { "name": "Zone5", "type": "float", "count": 4, "values": [ 0.0, 0.0, 0.0, 0.0 ] },
-    { "name": "Zone6", "type": "float", "count": 4, "values": [ 0.0, 0.0, 0.0, 0.0 ] },
-    { "name": "Zone7", "type": "float", "count": 4, "values": [ 0.0, 0.0, 0.0, 0.0 ] },
-    { "name": "RevealMaskCenter", "type": "float", "count": 2, "values": [ -2.0, -2.0 ] },
-    { "name": "RevealMaskRadius", "type": "float", "count": 1, "values": [ 0.0 ] }
+    {
+      "name": "ModelViewMat",
+      "type": "matrix4x4",
+      "count": 16,
+      "values": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "ProjMat",
+      "type": "matrix4x4",
+      "count": 16,
+      "values": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "TargetSize",
+      "type": "float",
+      "count": 2,
+      "values": [
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "FogColor",
+      "type": "float",
+      "count": 4,
+      "values": [
+        0.7,
+        0.8,
+        0.9,
+        1.0
+      ]
+    },
+    {
+      "name": "InverseProjMat",
+      "type": "matrix4x4",
+      "count": 16,
+      "values": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "CameraPos",
+      "type": "float",
+      "count": 3,
+      "values": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "CameraLook",
+      "type": "float",
+      "count": 3,
+      "values": [
+        0.0,
+        0.0,
+        -1.0
+      ]
+    },
+    {
+      "name": "CameraUp",
+      "type": "float",
+      "count": 3,
+      "values": [
+        0.0,
+        1.0,
+        0.0
+      ]
+    },
+    {
+      "name": "CameraLeft",
+      "type": "float",
+      "count": 3,
+      "values": [
+        -1.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Time",
+      "type": "float",
+      "count": 1,
+      "values": [
+        0.0
+      ]
+    },
+    {
+      "name": "WeatherIntensity",
+      "type": "float",
+      "count": 1,
+      "values": [
+        0.0
+      ]
+    },
+    {
+      "name": "WallHalfThickness",
+      "type": "float",
+      "count": 1,
+      "values": [
+        8.75
+      ]
+    },
+    {
+      "name": "WallBottomOffset",
+      "type": "float",
+      "count": 1,
+      "values": [
+        -34.0
+      ]
+    },
+    {
+      "name": "WallTopOffset",
+      "type": "float",
+      "count": 1,
+      "values": [
+        96.0
+      ]
+    },
+    {
+      "name": "FarPlaneDistance",
+      "type": "float",
+      "count": 1,
+      "values": [
+        256.0
+      ]
+    },
+    {
+      "name": "ActiveZoneCount",
+      "type": "float",
+      "count": 1,
+      "values": [
+        0.0
+      ]
+    },
+    {
+      "name": "RevealMaskCenter",
+      "type": "float",
+      "count": 2,
+      "values": [
+        -2.0,
+        -2.0
+      ]
+    },
+    {
+      "name": "RevealMaskRadius",
+      "type": "float",
+      "count": 1,
+      "values": [
+        0.0
+      ]
+    },
+    {
+      "name": "Zone0",
+      "type": "float",
+      "count": 4,
+      "values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Zone1",
+      "type": "float",
+      "count": 4,
+      "values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Zone2",
+      "type": "float",
+      "count": 4,
+      "values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Zone3",
+      "type": "float",
+      "count": 4,
+      "values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Zone4",
+      "type": "float",
+      "count": 4,
+      "values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Zone5",
+      "type": "float",
+      "count": 4,
+      "values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Zone6",
+      "type": "float",
+      "count": 4,
+      "values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Zone7",
+      "type": "float",
+      "count": 4,
+      "values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Zone8",
+      "type": "float",
+      "count": 4,
+      "values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Zone9",
+      "type": "float",
+      "count": 4,
+      "values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Zone10",
+      "type": "float",
+      "count": 4,
+      "values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Zone11",
+      "type": "float",
+      "count": 4,
+      "values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Zone12",
+      "type": "float",
+      "count": 4,
+      "values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Zone13",
+      "type": "float",
+      "count": 4,
+      "values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Zone14",
+      "type": "float",
+      "count": 4,
+      "values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Zone15",
+      "type": "float",
+      "count": 4,
+      "values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Zone16",
+      "type": "float",
+      "count": 4,
+      "values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Zone17",
+      "type": "float",
+      "count": 4,
+      "values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Zone18",
+      "type": "float",
+      "count": 4,
+      "values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Zone19",
+      "type": "float",
+      "count": 4,
+      "values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Zone20",
+      "type": "float",
+      "count": 4,
+      "values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Zone21",
+      "type": "float",
+      "count": 4,
+      "values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Zone22",
+      "type": "float",
+      "count": 4,
+      "values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Zone23",
+      "type": "float",
+      "count": 4,
+      "values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Zone24",
+      "type": "float",
+      "count": 4,
+      "values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Zone25",
+      "type": "float",
+      "count": 4,
+      "values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Zone26",
+      "type": "float",
+      "count": 4,
+      "values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Zone27",
+      "type": "float",
+      "count": 4,
+      "values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Zone28",
+      "type": "float",
+      "count": 4,
+      "values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Zone29",
+      "type": "float",
+      "count": 4,
+      "values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Zone30",
+      "type": "float",
+      "count": 4,
+      "values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Zone31",
+      "type": "float",
+      "count": 4,
+      "values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
   ]
 }

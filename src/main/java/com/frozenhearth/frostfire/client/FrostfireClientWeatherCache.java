@@ -6,27 +6,36 @@ import com.frozenhearth.frostfire.config.FrostfireConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.util.Mth;
+import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.chunk.ChunkStatus;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.phys.Vec3;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 public final class FrostfireClientWeatherCache
 {
-    public static final int MAX_RENDERED_WALLS = 8;
+    public static final int MAX_RENDERED_WALLS = 32;
     private static final int ZONE_SEARCH_PADDING = 64;
     private static final int CACHE_REFRESH_INTERVAL = 10;
     private static final double WEATHER_TRANSITION_BLOCKS = 6.0D;
     private static final double CLIENT_ZONE_RADIUS_INSET = 0.0D;
 
     private static ClientLevel cachedLevel;
+    private static ClientLevel cachedConnectedLevel;
     private static long lastRefreshTick = Long.MIN_VALUE;
+    private static long lastConnectedRefreshTick = Long.MIN_VALUE;
     private static int lastCenterChunkX = Integer.MIN_VALUE;
     private static int lastCenterChunkZ = Integer.MIN_VALUE;
+    private static int lastConnectedCenterChunkX = Integer.MIN_VALUE;
+    private static int lastConnectedCenterChunkZ = Integer.MIN_VALUE;
     private static final List<WeatherZone> ACTIVE_ZONES = new ArrayList<>();
+    private static final List<WeatherZoneSnapshot> CONNECTED_WALL_ZONES = new ArrayList<>();
 
     private FrostfireClientWeatherCache() {}
 
@@ -42,7 +51,9 @@ public final class FrostfireClientWeatherCache
         if (minecraft.level == null || minecraft.player == null)
         {
             ACTIVE_ZONES.clear();
+            CONNECTED_WALL_ZONES.clear();
             cachedLevel = null;
+            cachedConnectedLevel = null;
             return WeatherSuppressionSample.NONE;
         }
 
@@ -83,7 +94,9 @@ public final class FrostfireClientWeatherCache
         if (minecraft.level == null || minecraft.player == null)
         {
             ACTIVE_ZONES.clear();
+            CONNECTED_WALL_ZONES.clear();
             cachedLevel = null;
+            cachedConnectedLevel = null;
             return List.of();
         }
 
@@ -114,68 +127,21 @@ public final class FrostfireClientWeatherCache
         {
             return null;
         }
-        // getConnectedWallZones already sorts nearest-first; just take index 0.
         return zones.get(0);
     }
 
     public static List<WeatherZoneSnapshot> getConnectedWallZones(Vec3 focus, int maxCount)
     {
-        List<WeatherZoneSnapshot> wallZones = getActiveZones(focus);
-        if (wallZones.isEmpty())
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.level == null || minecraft.player == null)
         {
+            CONNECTED_WALL_ZONES.clear();
+            cachedConnectedLevel = null;
             return List.of();
         }
 
-        List<Integer> seedIndexes = new ArrayList<>();
-        for (int zoneIndex = 0; zoneIndex < wallZones.size(); zoneIndex++)
-        {
-            WeatherZoneSnapshot zone = wallZones.get(zoneIndex);
-            if (isInsideZone(zone, focus))
-            {
-                seedIndexes.add(zoneIndex);
-            }
-        }
-
-        if (seedIndexes.isEmpty())
-        {
-            return wallZones.stream()
-                    .limit(maxCount)
-                    .toList();
-        }
-
-        boolean[] visited = new boolean[wallZones.size()];
-        List<WeatherZoneSnapshot> connectedZones = new ArrayList<>();
-        ArrayList<Integer> frontier = new ArrayList<>(seedIndexes);
-        int frontierIndex = 0;
-        while (frontierIndex < frontier.size())
-        {
-            int currentIndex = frontier.get(frontierIndex++);
-            if (visited[currentIndex])
-            {
-                continue;
-            }
-
-            visited[currentIndex] = true;
-            WeatherZoneSnapshot currentZone = wallZones.get(currentIndex);
-            connectedZones.add(currentZone);
-
-            for (int candidateIndex = 0; candidateIndex < wallZones.size(); candidateIndex++)
-            {
-                if (visited[candidateIndex])
-                {
-                    continue;
-                }
-
-                WeatherZoneSnapshot candidateZone = wallZones.get(candidateIndex);
-                if (zonesOverlap(currentZone, candidateZone))
-                {
-                    frontier.add(candidateIndex);
-                }
-            }
-        }
-
-        return connectedZones.stream()
-                .sorted(Comparator.comparingDouble(zone -> zone.center().distanceToSqr(focus)))
+        refreshConnectedWallZones(minecraft.level, focus);
+        return CONNECTED_WALL_ZONES.stream()
                 .limit(maxCount)
                 .toList();
     }
@@ -234,11 +200,104 @@ public final class FrostfireClientWeatherCache
         }
     }
 
+    private static void refreshConnectedWallZones(ClientLevel level, Vec3 focus)
+    {
+        int centerChunkX = Mth.floor(focus.x) >> 4;
+        int centerChunkZ = Mth.floor(focus.z) >> 4;
+        long gameTime = level.getGameTime();
+
+        if (level == cachedConnectedLevel
+            && centerChunkX == lastConnectedCenterChunkX
+            && centerChunkZ == lastConnectedCenterChunkZ
+            && gameTime - lastConnectedRefreshTick < CACHE_REFRESH_INTERVAL)
+        {
+            return;
+        }
+
+        cachedConnectedLevel = level;
+        lastConnectedCenterChunkX = centerChunkX;
+        lastConnectedCenterChunkZ = centerChunkZ;
+        lastConnectedRefreshTick = gameTime;
+        CONNECTED_WALL_ZONES.clear();
+
+        List<WeatherZoneSnapshot> nearbyWallZones = getActiveZones(focus);
+        if (nearbyWallZones.isEmpty())
+        {
+            return;
+        }
+
+        List<WeatherZoneSnapshot> seedZones = nearbyWallZones.stream()
+                .filter(zone -> isInsideZone(zone, focus))
+                .toList();
+        if (seedZones.isEmpty())
+        {
+            CONNECTED_WALL_ZONES.addAll(nearbyWallZones);
+            return;
+        }
+
+        int maxCampfireRadius = FrostfireConfig.getMaxCampfireRadius();
+        Map<Long, WeatherZoneSnapshot> connectedZonesByKey = new LinkedHashMap<>();
+        ArrayDeque<WeatherZoneSnapshot> frontier = new ArrayDeque<>();
+
+        for (WeatherZoneSnapshot seedZone : seedZones)
+        {
+            if (connectedZonesByKey.putIfAbsent(zoneKey(seedZone), seedZone) == null)
+            {
+                frontier.addLast(seedZone);
+            }
+        }
+
+        while (!frontier.isEmpty())
+        {
+            WeatherZoneSnapshot currentZone = frontier.removeFirst();
+            int minChunkX = Mth.floor((currentZone.center().x - currentZone.radius() - maxCampfireRadius) / 16.0D);
+            int maxChunkX = Mth.floor((currentZone.center().x + currentZone.radius() + maxCampfireRadius) / 16.0D);
+            int minChunkZ = Mth.floor((currentZone.center().z - currentZone.radius() - maxCampfireRadius) / 16.0D);
+            int maxChunkZ = Mth.floor((currentZone.center().z + currentZone.radius() + maxCampfireRadius) / 16.0D);
+
+            for (int chunkX = minChunkX; chunkX <= maxChunkX; chunkX++)
+            {
+                for (int chunkZ = minChunkZ; chunkZ <= maxChunkZ; chunkZ++)
+                {
+                    LevelChunk chunk = level.getChunkSource().getChunk(chunkX, chunkZ, ChunkStatus.FULL, false);
+                    if (chunk == null)
+                    {
+                        continue;
+                    }
+
+                    chunk.getBlockEntities().values().forEach(blockEntity -> {
+                        if (!(blockEntity instanceof SurvivalCampfireBlockEntity campfire) || !campfire.isActive())
+                        {
+                            return;
+                        }
+
+                        double clientRadius = Math.max(0.0D, campfire.getActiveRadius() - CLIENT_ZONE_RADIUS_INSET);
+                        WeatherZoneSnapshot candidateZone =
+                                new WeatherZoneSnapshot(Vec3.atCenterOf(blockEntity.getBlockPos()), clientRadius);
+                        if (!rendersFogWall(campfire.getCurrentLevel()) || !zonesOverlap(currentZone, candidateZone))
+                        {
+                            return;
+                        }
+
+                        if (connectedZonesByKey.putIfAbsent(zoneKey(candidateZone), candidateZone) == null)
+                        {
+                            frontier.addLast(candidateZone);
+                        }
+                    });
+                }
+            }
+        }
+
+        CONNECTED_WALL_ZONES.addAll(connectedZonesByKey.values().stream()
+                .sorted(Comparator.comparingDouble(zone -> zone.center().distanceToSqr(focus)))
+                .toList());
+    }
+
     private record WeatherZone(Vec3 center, double radius, int level)
     {
         private boolean rendersFogWall()
         {
-            return level >= 3;
+            return FrostfireClientWeatherCache.rendersFogWall(level);
         }
 
         private double distanceToCenter(double x, double z)
@@ -259,10 +318,20 @@ public final class FrostfireClientWeatherCache
         return zone.center().distanceToSqr(pos.x, zone.center().y, pos.z) <= zone.radius() * zone.radius();
     }
 
+    private static boolean rendersFogWall(int level)
+    {
+        return level >= 3;
+    }
+
     private static boolean zonesOverlap(WeatherZoneSnapshot firstZone, WeatherZoneSnapshot secondZone)
     {
         double maxDistance = firstZone.radius() + secondZone.radius();
         return firstZone.center().distanceToSqr(secondZone.center()) <= maxDistance * maxDistance;
+    }
+
+    private static long zoneKey(WeatherZoneSnapshot zone)
+    {
+        return BlockPos.containing(zone.center()).asLong();
     }
 
     public record WeatherSuppressionSample(float strength, double insideDistance, Vec3 zoneCenter, double zoneRadius, int zoneLevel)
