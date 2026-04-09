@@ -2,6 +2,7 @@ package com.frozenhearth.frostfire.blockentity;
 
 import com.frozenhearth.frostfire.block.CampfireFootprintBlock;
 import com.frozenhearth.frostfire.block.SurvivalCampfireBlock;
+import com.frozenhearth.frostfire.compat.primalwinter.PrimalWinterBlockThawer;
 import com.frozenhearth.frostfire.compat.winter.WinterWeatherManager;
 import com.frozenhearth.frostfire.config.FrostfireConfig;
 import com.frozenhearth.frostfire.fuel.CampfireFuelRegistry;
@@ -403,6 +404,11 @@ public class SurvivalCampfireBlockEntity extends BlockEntity
     private boolean tryMeltBlock(ServerLevel level, BlockPos pos)
     {
         BlockState state = level.getBlockState(pos);
+        if (PrimalWinterBlockThawer.tryThaw(level, pos, state))
+        {
+            return true;
+        }
+
         if (state.is(Blocks.SNOW) || state.is(Blocks.SNOW_BLOCK) || state.is(Blocks.POWDER_SNOW))
         {
             level.removeBlock(pos, false);
