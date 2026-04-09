@@ -226,8 +226,12 @@ float stableDepthDistance(vec2 uv, out float occlusionFade) {
     float softenFactor = smoothstep(DEPTH_SOFTEN_SPREAD_NEAR, DEPTH_SOFTEN_SPREAD_FAR, spread);
     float softenedDistance = mix(averageDistance, maxDistance, softenFactor * DEPTH_SOFTEN_BLEND);
 
-    occlusionFade = smoothstep(CLOSE_OCCLUDER_FADE_START, CLOSE_OCCLUDER_FADE_END, averageDistance);
-    return softenedDistance;
+    // Keep the current depth pixel authoritative.  Pulling opaque alpha-cutout pixels
+    // toward neighboring sky-depth pixels makes leaf texture holes look inflated.
+    float occlusionDistance = min(centerDistance, softenedDistance);
+
+    occlusionFade = smoothstep(CLOSE_OCCLUDER_FADE_START, CLOSE_OCCLUDER_FADE_END, centerDistance);
+    return occlusionDistance;
 }
 
 vec3 worldRayDirection(vec2 uv) {
