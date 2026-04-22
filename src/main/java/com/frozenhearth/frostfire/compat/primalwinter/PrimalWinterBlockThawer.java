@@ -5,59 +5,21 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraftforge.registries.ForgeRegistries;
 
 import javax.annotation.Nullable;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 public final class PrimalWinterBlockThawer
 {
-    private static final Map<String, Block> VANILLA_REPLACEMENTS = Map.ofEntries(
-            Map.entry("snowy_dirt", Blocks.DIRT),
-            Map.entry("snowy_coarse_dirt", Blocks.COARSE_DIRT),
-            Map.entry("snowy_sand", Blocks.SAND),
-            Map.entry("snowy_red_sand", Blocks.RED_SAND),
-            Map.entry("snowy_gravel", Blocks.GRAVEL),
-            Map.entry("snowy_mud", Blocks.MUD),
-            Map.entry("snowy_stone", Blocks.STONE),
-            Map.entry("snowy_granite", Blocks.GRANITE),
-            Map.entry("snowy_andesite", Blocks.ANDESITE),
-            Map.entry("snowy_diorite", Blocks.DIORITE),
-            Map.entry("snowy_white_terracotta", Blocks.WHITE_TERRACOTTA),
-            Map.entry("snowy_orange_terracotta", Blocks.ORANGE_TERRACOTTA),
-            Map.entry("snowy_terracotta", Blocks.TERRACOTTA),
-            Map.entry("snowy_yellow_terracotta", Blocks.YELLOW_TERRACOTTA),
-            Map.entry("snowy_brown_terracotta", Blocks.BROWN_TERRACOTTA),
-            Map.entry("snowy_red_terracotta", Blocks.RED_TERRACOTTA),
-            Map.entry("snowy_light_gray_terracotta", Blocks.LIGHT_GRAY_TERRACOTTA),
-            Map.entry("snowy_dirt_path", Blocks.DIRT_PATH),
-            Map.entry("snowy_oak_log", Blocks.OAK_LOG),
-            Map.entry("snowy_birch_log", Blocks.BIRCH_LOG),
-            Map.entry("snowy_spruce_log", Blocks.SPRUCE_LOG),
-            Map.entry("snowy_jungle_log", Blocks.JUNGLE_LOG),
-            Map.entry("snowy_dark_oak_log", Blocks.DARK_OAK_LOG),
-            Map.entry("snowy_acacia_log", Blocks.ACACIA_LOG),
-            Map.entry("snowy_cherry_log", Blocks.CHERRY_LOG),
-            Map.entry("snowy_mangrove_log", Blocks.MANGROVE_LOG),
-            Map.entry("snowy_oak_leaves", Blocks.OAK_LEAVES),
-            Map.entry("snowy_birch_leaves", Blocks.BIRCH_LEAVES),
-            Map.entry("snowy_spruce_leaves", Blocks.SPRUCE_LEAVES),
-            Map.entry("snowy_jungle_leaves", Blocks.JUNGLE_LEAVES),
-            Map.entry("snowy_dark_oak_leaves", Blocks.DARK_OAK_LEAVES),
-            Map.entry("snowy_acacia_leaves", Blocks.ACACIA_LEAVES),
-            Map.entry("snowy_cherry_leaves", Blocks.CHERRY_LEAVES),
-            Map.entry("snowy_mangrove_leaves", Blocks.MANGROVE_LEAVES),
-            Map.entry("snowy_mangrove_roots", Blocks.MANGROVE_ROOTS),
-            Map.entry("snowy_muddy_mangrove_roots", Blocks.MUDDY_MANGROVE_ROOTS),
-            Map.entry("snowy_vine", Blocks.VINE)
-    );
-
+    private static final String SNOWY_PREFIX = "snowy_";
     private static final Map<Block, Block> thawedBlocks = new HashMap<>();
-    private static boolean initialized;
+    private static final Set<Block> unresolvedBlocks = new HashSet<>();
 
     private PrimalWinterBlockThawer() {}
 
@@ -83,22 +45,54 @@ public final class PrimalWinterBlockThawer
             return null;
         }
 
-        if (!initialized)
+        if (thawedBlocks.containsKey(frozenBlock))
         {
-            initialized = true;
-            VANILLA_REPLACEMENTS.forEach(PrimalWinterBlockThawer::cacheReplacement);
+            return thawedBlocks.get(frozenBlock);
         }
 
-        return thawedBlocks.get(frozenBlock);
+        if (unresolvedBlocks.contains(frozenBlock))
+        {
+            return null;
+        }
+
+        Block thawedBlock = resolveThawedBlock(frozenBlock);
+        if (thawedBlock != null)
+        {
+            thawedBlocks.put(frozenBlock, thawedBlock);
+            return thawedBlock;
+        }
+
+        unresolvedBlocks.add(frozenBlock);
+        return null;
     }
 
-    private static void cacheReplacement(String primalWinterBlockName, Block vanillaBlock)
+    @Nullable
+    private static Block resolveThawedBlock(Block frozenBlock)
     {
-        Block frozenBlock = ForgeRegistries.BLOCKS.getValue(ResourceLocation.fromNamespaceAndPath(FrostfireCampfireMod.PRIMAL_WINTER_MOD_ID, primalWinterBlockName));
-        if (frozenBlock != null)
+        ResourceLocation frozenBlockId = ForgeRegistries.BLOCKS.getKey(frozenBlock);
+        ResourceLocation vanillaBlockId = resolveVanillaBlockId(frozenBlockId);
+        if (vanillaBlockId == null)
         {
-            thawedBlocks.put(frozenBlock, vanillaBlock);
+            return null;
         }
+        return ForgeRegistries.BLOCKS.getValue(vanillaBlockId);
+    }
+
+    @Nullable
+    static ResourceLocation resolveVanillaBlockId(@Nullable ResourceLocation frozenBlockId)
+    {
+        if (frozenBlockId == null || !FrostfireCampfireMod.PRIMAL_WINTER_MOD_ID.equals(frozenBlockId.getNamespace()))
+        {
+            return null;
+        }
+
+        String path = frozenBlockId.getPath();
+        if (!path.startsWith(SNOWY_PREFIX) || path.length() <= SNOWY_PREFIX.length())
+        {
+            return null;
+        }
+
+        return ResourceLocation.fromNamespaceAndPath("minecraft", path.substring(SNOWY_PREFIX.length()));
     }
 
     private static BlockState copySharedProperties(BlockState source, BlockState target)

@@ -312,9 +312,14 @@ public class SurvivalCampfireBlockEntity extends BlockEntity
                 continue;
             }
 
-            int surfaceY = level.getHeight(Heightmap.Types.MOTION_BLOCKING, x, z);
-            int startY = Math.min(level.getMaxBuildHeight() - 1, Math.max(worldPosition.getY() + 2, surfaceY));
-            int endY = Math.max(level.getMinBuildHeight(), surfaceY - FrostfireConfig.getMeltDepthBelowSurface());
+            int canopyY = level.getHeight(Heightmap.Types.MOTION_BLOCKING, x, z);
+            int groundY = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
+            int startY = Math.min(level.getMaxBuildHeight() - 1, Math.max(worldPosition.getY() + 2, canopyY));
+            int endY = Math.max(level.getMinBuildHeight(), groundY - FrostfireConfig.getMeltDepthBelowSurface());
+            if (endY > startY)
+            {
+                endY = startY;
+            }
 
             for (int y = startY; y >= endY; y--)
             {
