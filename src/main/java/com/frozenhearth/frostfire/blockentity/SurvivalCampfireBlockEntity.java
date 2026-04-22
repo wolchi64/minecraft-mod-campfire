@@ -38,7 +38,7 @@ public class SurvivalCampfireBlockEntity extends BlockEntity
 {
     private static final int MAX_FOOTPRINT_RADIUS = 2;
     private static final int MAX_FOOTPRINT_LAYERS = 4;
-    private static final int PRIMAL_WINTER_THAW_INTERVAL_TICKS = 20;
+    private static final int PRIMAL_WINTER_THAW_INTERVAL_TICKS = 100;
     private int fuelBuffer;
     private int currentLevel;
     private boolean lit;
@@ -383,7 +383,7 @@ public class SurvivalCampfireBlockEntity extends BlockEntity
                 }
 
                 int startY = getColumnStartY(level, x, z);
-                int endY = getColumnEndY(level, x, z, startY);
+                int endY = level.getMinBuildHeight();
                 for (int y = startY; y >= endY; y--)
                 {
                     mutablePos.set(x, y, z);
