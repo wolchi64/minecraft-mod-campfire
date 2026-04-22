@@ -1,5 +1,6 @@
 package com.frozenhearth.frostfire.blockentity;
 
+import com.frozenhearth.frostfire.FrostfireCampfireMod;
 import com.frozenhearth.frostfire.block.CampfireFootprintBlock;
 import com.frozenhearth.frostfire.block.SurvivalCampfireBlock;
 import com.frozenhearth.frostfire.compat.primalwinter.PrimalWinterBlockThawer;
@@ -37,6 +38,7 @@ public class SurvivalCampfireBlockEntity extends BlockEntity
 {
     private static final int MAX_FOOTPRINT_RADIUS = 2;
     private static final int MAX_FOOTPRINT_LAYERS = 4;
+    private static final int PRIMAL_WINTER_THAW_INTERVAL_TICKS = 20;
     private int fuelBuffer;
     private int currentLevel;
     private boolean lit;
@@ -45,6 +47,7 @@ public class SurvivalCampfireBlockEntity extends BlockEntity
     private double decayProgress;
     private int secondTicker;
     private int meltTicker;
+    private int primalWinterThawTicker;
     private int meltRingRadius;
     private int meltRingIndex;
 
@@ -99,11 +102,18 @@ public class SurvivalCampfireBlockEntity extends BlockEntity
         }
 
         currentLevel = FrostfireConfig.resolveLevel(fuelBuffer);
-        if (oldLevel != currentLevel || oldLit != lit)
+        boolean stateChanged = oldLevel != currentLevel || oldLit != lit;
+        if (stateChanged)
         {
             resetMeltSweep();
         }
+
         syncFootprintLayout(level);
+        if (stateChanged && isActive())
+        {
+            thawNearbyPrimalWinter(level);
+            primalWinterThawTicker = 0;
+        }
         tickMelting(level);
 
         if (oldSheltered != sheltered || oldLevel != currentLevel || oldLit != lit)
@@ -166,8 +176,11 @@ public class SurvivalCampfireBlockEntity extends BlockEntity
         if (!isActive() || currentLevel <= 0)
         {
             resetMeltSweep();
+            primalWinterThawTicker = 0;
             return;
         }
+
+        tickPrimalWinterThaw(level);
 
         meltTicker++;
         if (meltTicker < FrostfireConfig.getMeltIntervalTicks())
@@ -177,6 +190,23 @@ public class SurvivalCampfireBlockEntity extends BlockEntity
 
         meltTicker = 0;
         meltNearbySnowAndIce(level);
+    }
+
+    private void tickPrimalWinterThaw(ServerLevel level)
+    {
+        if (!FrostfireCampfireMod.isPrimalWinterLoaded())
+        {
+            return;
+        }
+
+        primalWinterThawTicker++;
+        if (primalWinterThawTicker < PRIMAL_WINTER_THAW_INTERVAL_TICKS)
+        {
+            return;
+        }
+
+        primalWinterThawTicker = 0;
+        thawNearbyPrimalWinter(level);
     }
 
     private void resetMeltSweep()
@@ -312,14 +342,8 @@ public class SurvivalCampfireBlockEntity extends BlockEntity
                 continue;
             }
 
-            int canopyY = level.getHeight(Heightmap.Types.MOTION_BLOCKING, x, z);
-            int groundY = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
-            int startY = Math.min(level.getMaxBuildHeight() - 1, Math.max(worldPosition.getY() + 2, canopyY));
-            int endY = Math.max(level.getMinBuildHeight(), groundY - FrostfireConfig.getMeltDepthBelowSurface());
-            if (endY > startY)
-            {
-                endY = startY;
-            }
+            int startY = getColumnStartY(level, x, z);
+            int endY = getColumnEndY(level, x, z, startY);
 
             for (int y = startY; y >= endY; y--)
             {
@@ -327,6 +351,43 @@ public class SurvivalCampfireBlockEntity extends BlockEntity
                 if (tryMeltBlock(level, mutablePos))
                 {
                     break;
+                }
+            }
+        }
+    }
+
+    private void thawNearbyPrimalWinter(ServerLevel level)
+    {
+        int radius = getActiveRadius();
+        if (radius <= 0 || !FrostfireCampfireMod.isPrimalWinterLoaded())
+        {
+            return;
+        }
+
+        BlockPos.MutableBlockPos mutablePos = new BlockPos.MutableBlockPos();
+        for (int dx = -radius; dx <= radius; dx++)
+        {
+            for (int dz = -radius; dz <= radius; dz++)
+            {
+                if ((dx * dx) + (dz * dz) > radius * radius)
+                {
+                    continue;
+                }
+
+                int x = worldPosition.getX() + dx;
+                int z = worldPosition.getZ() + dz;
+                mutablePos.set(x, worldPosition.getY(), z);
+                if (!level.isLoaded(mutablePos))
+                {
+                    continue;
+                }
+
+                int startY = getColumnStartY(level, x, z);
+                int endY = getColumnEndY(level, x, z, startY);
+                for (int y = startY; y >= endY; y--)
+                {
+                    mutablePos.set(x, y, z);
+                    PrimalWinterBlockThawer.tryThaw(level, mutablePos, level.getBlockState(mutablePos));
                 }
             }
         }
@@ -428,6 +489,18 @@ public class SurvivalCampfireBlockEntity extends BlockEntity
             return true;
         }
         return false;
+    }
+
+    private int getColumnStartY(ServerLevel level, int x, int z)
+    {
+        int canopyY = level.getHeight(Heightmap.Types.MOTION_BLOCKING, x, z);
+        return Math.min(level.getMaxBuildHeight() - 1, Math.max(worldPosition.getY() + 2, canopyY));
+    }
+
+    private int getColumnEndY(ServerLevel level, int x, int z, int startY)
+    {
+        int groundY = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
+        return Math.min(startY, Math.max(level.getMinBuildHeight(), groundY - FrostfireConfig.getMeltDepthBelowSurface()));
     }
 
     private BlockState getMeltedIceState(ServerLevel level, BlockPos pos)
